@@ -1,6 +1,6 @@
 ---
 title: CSR Assist
-description: Private local document search and customer-service assistant powered by Ollama
+description: Source-isolated local and Azure document search with grounded customer-service answers
 author: CSR Assist team
 ms.date: 2026-10-06
 ms.topic: overview
@@ -8,10 +8,12 @@ ms.topic: overview
 
 ## Overview
 
-CSR Assist is a private customer-service workspace that scans local documents,
-provides keyword search, and asks a local Ollama model to prepare
-evidence-grounded answers. Mira, the built-in assistant, cites local source
-excerpts and reports missing evidence rather than simulating an answer.
+CSR Assist is a customer-service workspace with explicit Offline and Online
+processing modes. Offline mode scans local documents and uses local retrieval
+with optional Ollama generation. Online mode searches separately approved
+Azure AI Search content and uses Azure AI Foundry for grounded generation.
+Mira, the built-in assistant, cites source excerpts and reports missing
+evidence rather than simulating an answer.
 
 Mira answers only from retrieved document content. Questions that are
 unrelated, out of scope, or unsupported receive this response:
@@ -25,6 +27,11 @@ Detailed guides:
 
 * [Architecture](docs/ARCHITECTURE.md)
 * [User guide](docs/USER-GUIDE.md)
+
+Project links:
+
+* [Public demo](https://ca-csr-assist-demo.salmondesert-76e2a623.westus2.azurecontainerapps.io/)
+* [GitHub repository](https://github.com/KrishnaDistributedcomputing/csr-assist)
 
 The production deployment contains the React interface, FastAPI backend,
 document extraction, Tesseract OCR, SQLite FTS5 index, Ollama runtime, and
@@ -57,9 +64,12 @@ The public deployment sets `CSR_READ_ONLY_DEMO=true`. In this mode:
 * Uploads and administrative mutations return HTTP 403
 * Search and chat history is not stored or exposed
 * Feedback cannot change shared source rankings
+* Model and application settings cannot be changed
 * The interface identifies itself as a public read-only demo
 * Offline cited answers remain available without provisioning an Ollama model
 * Online mode uses Azure AI Search and a grounded Azure AI Foundry deployment
+* Runtime documents, indexes, configuration, and model directories use
+  ephemeral container storage
 
 The first request after an idle period can take longer while Azure starts a
 replica. Use the local Docker deployment for private documents, persistent
@@ -67,13 +77,20 @@ history, feedback, uploads, and local model generation.
 
 ### Online and offline modes
 
-The source selector makes the processing boundary explicit:
+The source selector makes the processing boundary explicit. Offline uses the
+teal local-data theme. Online changes the application boundary to Azure blue,
+and results and citations also display their source mode.
 
 * **Offline** searches the local SQLite FTS5 index and uses fast extraction or
   an optional loopback Ollama model.
 * **Online** searches a configured Azure AI Search index and sends only the
   bounded retrieved excerpts and question to Azure AI Foundry for grounded
   generation.
+
+Changing modes does not copy data. Offline documents are never automatically
+uploaded, synchronized, or made searchable in Online mode. Content must be
+separately approved and indexed in Azure AI Search before Online mode can find
+it. Azure-indexed sources are unavailable in Offline mode.
 
 Online mode uses managed identity. Assign `Search Index Data Reader` on the
 Search service and `Foundry User` on the Foundry resource to the application's
@@ -87,10 +104,76 @@ CSR_AZURE_AI_FOUNDRY_DEPLOYMENT=<deployment-name>
 CSR_AZURE_AI_IDENTITY_CLIENT_ID=<user-assigned-managed-identity-client-id>
 ```
 
+Foundry requests target the configured deployment-specific endpoint:
+
+```text
+https://<resource>.services.ai.azure.com/openai/deployments/<deployment-name>/chat/completions
+```
+
+CSR Assist bounds each Foundry generation request to 10 seconds, even when the
+general Azure client timeout is higher. If Foundry is temporarily unavailable,
+rate limited, or returns no usable answer, CSR Assist returns a cited extractive
+answer from the Azure AI Search results with a visible fallback notice. It uses
+the same transparent fallback when strongly matching search evidence exists but
+Foundry refuses the question or omits citations. If the search evidence does
+not support the question, the application returns the standard unsupported
+answer instead of using the fallback.
+
 The repository includes
 [`PUBLIC-cogsdale-overview.md`](sample-documents/PUBLIC-cogsdale-overview.md),
 a concise demo document derived from Cogsdale's public website with source
 links and a non-authoritative-content notice.
+
+## Data boundaries and compliance controls
+
+The mode-aware **Data Compliance** tab describes the controls and
+responsibilities for the selected source:
+
+* Application-enforced controls appear as **Implemented**
+* Processing and transfer boundaries appear as **Boundary**
+* Deployment decisions owned by the customer appear as **Customer control**
+* Release and production checks that still require evidence appear as
+  **Verify**
+
+These labels document the current implementation and responsibility boundary.
+They are not a compliance certification, accessibility conformance claim, or
+legal advice.
+
+### Offline data boundary
+
+Offline mode performs parsing, OCR, chunking, key-fact extraction, SQLite FTS5
+retrieval, optional `sqlite-vec` retrieval, and optional Ollama inference within
+the local application environment. Original documents remain in
+`/data/documents`. Extracted chunks, cache entries, search and chat history,
+feedback, and usage records remain in the SQLite database under `/data/index`.
+
+The application does not send Offline questions or excerpts to Azure AI Search
+or Azure AI Foundry. The customer remains responsible for host access, document
+classification, disk encryption, backups, malware scanning, retention,
+deletion, recovery, patching, audit collection, and incident response.
+
+### Online data boundary
+
+Online mode searches only document chunks that an administrator has separately
+approved and placed in Azure AI Search. The search question is transferred to
+the Azure AI Search query endpoint. CSR Assist then sends the question and at
+most two bounded retrieved excerpts to the configured Azure AI Foundry
+deployment. It does not send the full Offline corpus.
+
+The application uses managed identity and RBAC rather than stored Azure AI API
+keys. Azure-indexed content persists until the customer deletes it. Before
+production use, the customer must decide and verify the Azure region, data
+residency, retention, diagnostic logging, networking, encryption, deletion,
+legal-hold, and incident-response configuration.
+
+### Accessibility reference
+
+The **Data Compliance** tab maps implemented interface practices to
+[CAN/ASC EN 301 549:2024 Section 11](https://accessible.canada.ca/standards-and-technical-guides/standards-and-technical-guides-database/can-asc-en-301-5492024-accessibility-requirements-ict-products-and-services-en-301-5492021-idt/11-software).
+Full conformance requires testing all applicable preconditions and procedures,
+including applicable web requirements. The mapping is implementation
+documentation only. It is not certification, a conformance determination, or
+legal advice.
 
 ## Persistent volumes
 
