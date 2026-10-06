@@ -8,50 +8,124 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
-const dataControls = [
-  {
-    icon: Database,
-    title: "Offline processing",
-    status: "Implemented",
-    detail:
-      "Document parsing, SQLite search, answer caching, feedback, and optional Ollama inference remain inside the deployed local environment.",
-  },
-  {
-    icon: Cloud,
-    title: "Explicit Online boundary",
-    status: "Implemented",
-    detail:
-      "Users must select Online mode before queries and bounded source excerpts are sent to Azure AI Search and Azure AI Foundry.",
-  },
-  {
-    icon: LockKeyhole,
-    title: "Managed identity",
-    status: "Implemented",
-    detail:
-      "The Azure deployment uses a user-assigned managed identity and role-based access instead of application API keys.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Public demo privacy",
-    status: "Implemented",
-    detail:
-      "Uploads, feedback, settings changes, and history persistence are disabled. Only approved public sample content is available.",
-  },
-  {
-    icon: BadgeCheck,
-    title: "Evidence-only responses",
-    status: "Implemented",
-    detail:
-      "Answers require indexed evidence and citations. Unsupported questions receive the defined refusal instead of speculation.",
-  },
-  {
-    icon: Accessibility,
-    title: "Production governance",
-    status: "Verify",
-    detail:
-      "Data residency, retention, access reviews, incident response, and Azure service configuration require owner approval before production use.",
-  },
-];
+type SourceMode = "offline" | "online";
+
+interface CompliancePanelProps {
+  source: SourceMode;
+  readOnlyDemo: boolean;
+}
+
+const controlsBySource = {
+  offline: [
+    {
+      icon: Database,
+      title: "Local parsing and index",
+      status: "Implemented",
+      detail:
+        "Customer files are parsed into chunks and key facts stored in the local SQLite index under the operator-managed data directories.",
+    },
+    {
+      icon: LockKeyhole,
+      title: "Local answers and cache",
+      status: "Implemented",
+      detail:
+        "Search, cached answers, usage records, history, and optional Ollama generation remain inside the local application environment.",
+    },
+    {
+      icon: Cloud,
+      title: "No Azure AI transfer",
+      status: "Boundary",
+      detail:
+        "Offline questions and document excerpts are not sent to Azure AI Search or Azure AI Foundry by this application.",
+    },
+    {
+      icon: BadgeCheck,
+      title: "Local feedback learning",
+      status: "Implemented",
+      detail:
+        "Good and bad ratings adjust local ranking and cache behavior. Feedback does not automatically train an external model.",
+    },
+    {
+      icon: ShieldCheck,
+      title: "Customer data custody",
+      status: "Customer control",
+      detail:
+        "The customer controls host access, disk encryption, backups, retention, deletion, malware scanning, and approved document classifications.",
+    },
+  ],
+  online: [
+    {
+      icon: Database,
+      title: "Approved Azure search index",
+      status: "Customer control",
+      detail:
+        "Only administrator-approved document chunks should be placed in Azure AI Search. Indexed content persists until the customer removes it.",
+    },
+    {
+      icon: Cloud,
+      title: "Query and excerpt transfer",
+      status: "Boundary",
+      detail:
+        "The question is sent to Azure AI Search. Bounded retrieved excerpts and the question are sent to Azure AI Foundry for grounded generation.",
+    },
+    {
+      icon: LockKeyhole,
+      title: "Managed identity and RBAC",
+      status: "Implemented",
+      detail:
+        "The deployed application uses managed identity and least-privilege Azure roles instead of storing Azure AI API keys.",
+    },
+    {
+      icon: ShieldCheck,
+      title: "Offline data isolation",
+      status: "Implemented",
+      detail:
+        "Offline customer documents are not searched, uploaded, copied, or synchronized into the Online index when the mode changes.",
+    },
+    {
+      icon: BadgeCheck,
+      title: "Grounded model input",
+      status: "Implemented",
+      detail:
+        "Foundry receives bounded evidence rather than the full local corpus. Answers require citations or use a cited extractive fallback.",
+    },
+  ],
+} satisfies Record<SourceMode, Array<{
+  icon: typeof Database;
+  title: string;
+  status: string;
+  detail: string;
+}>>;
+
+const flowRowsBySource = {
+  offline: [
+    ["Customer documents", "Local parser and application process", "Mounted customer storage"],
+    ["Extracted chunks and facts", "Local SQLite FTS index", "Local index database"],
+    ["Questions and answers", "Local retrieval and optional Ollama", "Local cache and history"],
+    ["Feedback and usage", "Local ranking and analytics", "Local index database"],
+  ],
+  online: [
+    ["Approved document chunks", "Azure AI Search", "Azure Search index until customer deletion"],
+    ["Search question", "Azure AI Search query endpoint", "Subject to approved Azure service configuration"],
+    ["Question and bounded excerpts", "Azure AI Foundry inference", "Verify tenant, region, logging, and service retention settings"],
+    ["Answer metadata", "CSR Assist runtime", "No user history in the public demo; production policy required"],
+  ],
+} satisfies Record<SourceMode, string[][]>;
+
+const ownerDecisionsBySource = {
+  offline: [
+    "Define allowed local document classifications and prohibit unapproved secrets, payment data, health data, or other regulated content.",
+    "Configure host identity, file permissions, disk encryption, backups, retention, secure deletion, and recovery testing.",
+    "Control local history, answer-cache, feedback, and usage retention and provide customer-data export or deletion procedures.",
+    "Document endpoint security, patching, audit collection, incident response, and legal-hold responsibilities.",
+  ],
+  online: [
+    "Approve which customer document chunks may be indexed; Offline content is never approved for Online use by default.",
+    "Confirm Azure region, data residency, service retention, diagnostic logging, private networking, and encryption requirements.",
+    "Review managed-identity roles, index administrators, audit logs, deletion workflows, legal holds, and incident procedures.",
+    "Map the deployment to applicable privacy, contractual, sector, and customer-data obligations before production use.",
+  ],
+} satisfies Record<SourceMode, string[]>;
 
 const accessibilityChecks = [
   {
@@ -85,33 +159,75 @@ const verificationSteps = [
   "Record exceptions, remediation owners, evidence, and review dates before claiming conformance.",
 ];
 
-export default function CompliancePanel() {
+export default function CompliancePanel({
+  source,
+  readOnlyDemo,
+}: CompliancePanelProps) {
+  const online = source === "online";
+  const dataControls = [
+    ...controlsBySource[source],
+    {
+      icon: online ? Accessibility : ShieldCheck,
+      title: readOnlyDemo ? "Public demo safeguards" : "Production approval",
+      status: readOnlyDemo ? "Implemented" : "Verify",
+      detail: readOnlyDemo
+        ? "Only public samples are available. Uploads, feedback, settings changes, and user-history persistence are disabled."
+        : "A designated customer owner must approve classification, residency, retention, access, deletion, and incident controls.",
+    },
+  ];
+  const flowRows = flowRowsBySource[source];
+  const ownerDecisions = ownerDecisionsBySource[source];
+
   return (
     <section
-      className="compliance-panel"
+      className={`compliance-panel ${source}`}
       aria-label="Data and accessibility compliance"
     >
       <div className="compliance-hero">
         <div>
-          <p className="eyebrow">Data and accessibility compliance</p>
-          <h2>Controls, boundaries, and verification</h2>
+          <p className="eyebrow">
+            {online ? "Online customer data compliance" : "Offline customer data compliance"}
+          </p>
+          <h2>
+            {online ? "Azure processing boundary" : "Local processing boundary"}
+          </h2>
           <p>
-            This page documents implemented safeguards and required validation.
-            It is not a certification or legal opinion.
+            {online
+              ? "This mode uses only approved Azure-indexed content and sends bounded evidence to Azure AI services."
+              : "This mode keeps indexed documents, retrieval, history, cache, and optional inference in the local environment."}
+            {" "}This page documents controls, not a certification or legal opinion.
           </p>
         </div>
         <div className="compliance-status">
-          <ShieldCheck size={22} />
-          <strong>Evidence-based status</strong>
-          <span>Implemented controls are separated from items requiring review</span>
+          {online ? <Cloud size={22} /> : <Database size={22} />}
+          <strong>{online ? "Online · Azure AI" : "Offline · Local data"}</strong>
+          <span>
+            {online
+              ? "Offline documents remain isolated and unavailable"
+              : "No Azure AI request is made in this mode"}
+          </span>
+        </div>
+      </div>
+
+      <div className={`mode-boundary-callout ${source}`} role="note">
+        <LockKeyhole size={20} />
+        <div>
+          <strong>
+            {online ? "Customer-data boundary: Online" : "Customer-data boundary: Offline"}
+          </strong>
+          <p>
+            {online
+              ? "Changing to Online does not upload or synchronize local files. Only content separately approved and indexed in Azure is available."
+              : "Changing to Offline prevents Azure-indexed sources from being searched. Customer documents remain under local operator custody."}
+          </p>
         </div>
       </div>
 
       <div className="compliance-section">
         <div className="section-heading">
           <div>
-            <h3>Data-handling controls</h3>
-            <p>Current application and public-demo safeguards.</p>
+            <h3>{online ? "Online data features" : "Offline data features"}</h3>
+            <p>Controls and customer responsibilities for the selected mode.</p>
           </div>
         </div>
         <div className="compliance-grid">
@@ -123,7 +239,13 @@ export default function CompliancePanel() {
                   <div className="compliance-icon"><Icon size={20} /></div>
                   <span
                     className={`compliance-badge ${
-                      control.status === "Verify" ? "verify" : "implemented"
+                      control.status === "Implemented"
+                        ? "implemented"
+                        : control.status === "Boundary"
+                          ? "boundary"
+                          : control.status === "Customer control"
+                            ? "customer"
+                            : "verify"
                     }`}
                   >
                     {control.status}
@@ -139,43 +261,32 @@ export default function CompliancePanel() {
 
       <div className="compliance-details">
         <article>
-          <h3>Processing and retention summary</h3>
+          <h3>{online ? "Online data flow and persistence" : "Offline data flow and persistence"}</h3>
           <div className="compliance-table-wrapper">
             <table>
               <thead>
                 <tr>
-                  <th scope="col">Mode</th>
+                  <th scope="col">Data item</th>
                   <th scope="col">Processing boundary</th>
                   <th scope="col">Persistence</th>
                 </tr>
               </thead>
               <tbody>
-                <tr>
-                  <th scope="row">Offline</th>
-                  <td>Local application, SQLite, and optional Ollama</td>
-                  <td>Operator-managed mounted storage</td>
-                </tr>
-                <tr>
-                  <th scope="row">Online</th>
-                  <td>Azure AI Search and Azure AI Foundry</td>
-                  <td>Depends on approved Azure tenant and service settings</td>
-                </tr>
-                <tr>
-                  <th scope="row">Public demo</th>
-                  <td>Approved public samples only</td>
-                  <td>No user history; runtime storage is ephemeral</td>
-                </tr>
+                {flowRows.map(([item, boundary, persistence]) => (
+                  <tr key={item}>
+                    <th scope="row">{item}</th>
+                    <td>{boundary}</td>
+                    <td>{persistence}</td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           </div>
         </article>
         <article>
-          <h3>Production owner decisions</h3>
+          <h3>Customer compliance responsibilities</h3>
           <ul>
-            <li>Classify allowed documents and prohibit secrets or regulated data unless approved.</li>
-            <li>Confirm Azure region, residency, retention, logging, and network requirements.</li>
-            <li>Review role assignments, access logs, backups, deletion, and incident procedures.</li>
-            <li>Publish a privacy notice and retention schedule for the production deployment.</li>
+            {ownerDecisions.map((decision) => <li key={decision}>{decision}</li>)}
           </ul>
         </article>
       </div>

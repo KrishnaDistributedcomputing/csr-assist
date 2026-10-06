@@ -72,6 +72,11 @@ test("renders the document workspace and Mira", async () => {
   ).toBeInTheDocument();
   expect(screen.getByText(/not a certification or legal opinion/i)).toBeInTheDocument();
   expect(
+    screen.getByRole("heading", { name: "Local processing boundary" })
+  ).toBeInTheDocument();
+  expect(screen.getByText("No Azure AI transfer")).toBeInTheDocument();
+  expect(screen.getByText(/Customer-data boundary: Offline/i)).toBeInTheDocument();
+  expect(
     screen.getByRole("link", { name: /Official standard/i })
   ).toHaveAttribute("href", expect.stringContaining("11-software"));
   fireEvent.click(screen.getByRole("tab", { name: /History/ }));
@@ -226,6 +231,15 @@ test("switches document search to Azure AI online mode", async () => {
   expect(
     screen.getAllByText(/Offline documents are isolated/i).length
   ).toBeGreaterThan(0);
+  fireEvent.click(screen.getByRole("tab", { name: "Data compliance" }));
+  expect(
+    await screen.findByRole("heading", { name: "Azure processing boundary" })
+  ).toBeInTheDocument();
+  expect(screen.getByText("Offline data isolation")).toBeInTheDocument();
+  expect(
+    screen.getByText(/Changing to Online does not upload or synchronize local files/i)
+  ).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("tab", { name: "Answer workspace" }));
   fireEvent.change(screen.getByLabelText("Search documents"), {
     target: { value: "Cogsdale" }
   });

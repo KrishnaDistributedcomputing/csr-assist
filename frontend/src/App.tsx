@@ -885,7 +885,10 @@ export default function App() {
               aria-labelledby="workspace-tab-compliance"
             >
               <Suspense fallback={<PanelLoading label="Loading compliance details" />}>
-                <CompliancePanel />
+                <CompliancePanel
+                  source={dataSource}
+                  readOnlyDemo={deployment.read_only_demo}
+                />
               </Suspense>
             </div>
           )}
