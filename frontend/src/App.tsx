@@ -10,6 +10,7 @@ import {
   RefreshCw,
   Search,
   Send,
+  Sparkles,
   Sun,
   ThumbsDown,
   ThumbsUp,
@@ -38,10 +39,16 @@ import type {
   UsageDashboard
 } from "./types";
 
-const prompts = [
+const suggestedPrompts = [
   "What is the return policy?",
   "Draft a customer-ready response",
   "Are there conflicting instructions?"
+];
+const allPrompts = [
+  ...suggestedPrompts,
+  "Summarize the key points",
+  "Which document supports this answer?",
+  "What information is missing?"
 ];
 const searchProgressMessages = [
   "Searching extracted key facts",
@@ -101,6 +108,7 @@ export default function App() {
   const [answer, setAnswer] = useState<ChatResponse | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [assistantTab, setAssistantTab] = useState<"chat" | "history">("chat");
+  const [promptView, setPromptView] = useState<"suggested" | "all">("suggested");
   const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>("answers");
   const [usage, setUsage] = useState<UsageDashboard | null>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
@@ -130,6 +138,8 @@ export default function App() {
     dataSource === "online"
       ? "Online mode searches only approved Azure-indexed sources. Offline documents are isolated and are not available in this mode."
       : "Offline mode searches only the local document index. Azure-hosted sources are not available in this mode.";
+  const visiblePrompts =
+    promptView === "suggested" ? suggestedPrompts : allPrompts;
 
   async function refresh() {
     try {
@@ -350,10 +360,13 @@ export default function App() {
   const assistant = (
     <section className="assistant-panel" aria-label="Mira assistant">
       <header className="assistant-header">
-        <div className="avatar"><Bot size={22} /></div>
-        <div>
-          <strong>Mira</strong>
-          <span>CSR Assist teammate</span>
+        <div className="assistant-sparkle"><Sparkles size={21} /></div>
+        <div className="assistant-identity">
+          <div>
+            <strong>Mira AI Assistant</strong>
+            <span className="assistant-badge">Grounded</span>
+          </div>
+          <small>Your friendly document guide</small>
         </div>
         <button
           className="icon-button mobile-only"
@@ -363,17 +376,23 @@ export default function App() {
           <X />
         </button>
       </header>
-      <div className="model-row">
-        <label>Knowledge source</label>
-        {sourceToggle}
+      <div className="assistant-context">
+        <div className="assistant-context-heading">
+          <span>
+            <strong>Knowledge source</strong>
+            <small>{dataSource === "online" ? "Azure AI" : "Local index"}</small>
+          </span>
+          {sourceToggle}
+        </div>
         <p className={`source-boundary-notice ${dataSource}`} role="note">
           {sourceBoundaryMessage}
         </p>
         {dataSource === "offline" ? (
-          <>
-            <label htmlFor="model">Optional local model</label>
+          <details className="model-settings">
+            <summary>Optional local model settings</summary>
             <select
               id="model"
+              aria-label="Optional local model"
               value={activeModel?.id ?? ""}
               onChange={async (event) => {
                 try {
@@ -394,7 +413,7 @@ export default function App() {
                 </option>
               ))}
             </select>
-          </>
+          </details>
         ) : (
           <div className="online-provider">
             <Cloud size={17} />
@@ -427,13 +446,37 @@ export default function App() {
         <div hidden={assistantTab !== "chat"}>
           {!answer && (
             <div className="mira-intro">
-              <p>
-                {dataSource === "online"
-                  ? "I’ll use Azure AI Search and Foundry to answer from the public demo sources."
-                  : "I’ll use the offline index to answer from the local documents."}
-              </p>
+              <div className="mira-greeting">
+                <Sparkles size={18} />
+                <div>
+                  <strong>Hello! How can I help?</strong>
+                  <p>
+                    {dataSource === "online"
+                      ? "I’ll answer from approved Azure sources and show my citations."
+                      : "I’ll answer from your local documents and show my citations."}
+                  </p>
+                </div>
+              </div>
+              <div className="prompt-tabs" role="tablist" aria-label="Prompt gallery">
+                <button
+                  role="tab"
+                  aria-selected={promptView === "suggested"}
+                  className={promptView === "suggested" ? "active" : ""}
+                  onClick={() => setPromptView("suggested")}
+                >
+                  Suggested prompts
+                </button>
+                <button
+                  role="tab"
+                  aria-selected={promptView === "all"}
+                  className={promptView === "all" ? "active" : ""}
+                  onClick={() => setPromptView("all")}
+                >
+                  All prompts
+                </button>
+              </div>
               <div className="prompt-list">
-                {prompts.map((prompt) => (
+                {visiblePrompts.map((prompt) => (
                   <button
                     key={prompt}
                     onClick={() => {
@@ -442,10 +485,17 @@ export default function App() {
                     }}
                     className="prompt"
                   >
-                    {prompt}
+                    <span>{prompt}</span>
+                    <Send size={14} />
                   </button>
                 ))}
               </div>
+              <button
+                className="prompt-gallery-link"
+                onClick={() => setPromptView("all")}
+              >
+                <Sparkles size={16} /> Browse prompt gallery
+              </button>
             </div>
           )}
           {chatPending && (
@@ -611,12 +661,20 @@ export default function App() {
             <textarea
               value={message}
               onChange={(event) => setMessage(event.target.value)}
-              placeholder="Ask Mira about your local documents…"
+              placeholder={
+                dataSource === "online"
+                  ? "Ask Mira about approved Azure sources…"
+                  : "Ask Mira about your local documents…"
+              }
               aria-label="Message Mira"
               rows={3}
             />
-            <button className="send-button" disabled={busy || !message.trim()}>
-              <Send size={18} /> Send
+            <button
+              className="send-button"
+              aria-label="Send"
+              disabled={busy || !message.trim()}
+            >
+              <Send size={19} />
             </button>
           </form>
           <p className="accuracy-note">

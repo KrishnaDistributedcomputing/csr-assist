@@ -70,8 +70,27 @@ available Online sources.
 
 ## Ask Mira
 
-Open Mira from the desktop side panel or the floating mobile button. Fast mode
-uses processed facts and citations without running a generative model.
+Open Mira from the desktop assistant panel or the floating mobile button. The
+clean header identifies **Mira AI Assistant** as grounded and keeps the current
+document context close to the conversation.
+
+The compact **Knowledge source** area shows **Offline** with the local index or
+**Online** with Azure AI. Use its source toggle to change modes. The boundary
+notice explains which sources Mira can use, and the composer placeholder
+changes to match the selected context. Offline mode also provides optional
+local model settings. Online mode identifies the active Azure AI Foundry
+model.
+
+Use the assistant navigation to switch between **Chat** and **History**:
+
+1. Open **Chat** to ask a question or start from the prompt gallery.
+2. Choose **Suggested prompts** for the three common tasks or **All prompts**
+   for the complete gallery. **Browse prompt gallery** also opens the complete
+   list.
+3. Select a prompt to place its text in the large composer at the bottom of
+   the assistant. You can review or edit the text before sending it.
+4. Select the send button to ask Mira. The button remains unavailable until
+   the composer contains text.
 
 Suggested prompts include:
 
@@ -79,8 +98,12 @@ Suggested prompts include:
 * Draft a customer-ready response
 * Are there conflicting instructions?
 
-The model selector controls optional generated mode. Models marked **Setup
-required** are approved but not installed.
+The complete gallery also includes prompts for summaries, source support, and
+missing information. Mira keeps the composer at the bottom of **Chat** while
+you review prompts and answers.
+
+The optional local model selector controls generated Offline answers. Models
+marked **Setup required** are approved but not installed.
 
 Mira does not use external knowledge or speculate beyond retrieved excerpts.
 When the documents do not support an answer, Mira responds:
@@ -143,9 +166,10 @@ Use the thumbs-up or thumbs-down controls below an answer.
 
 ## History
 
-Open Mira's **History** tab to load locally stored searches and questions.
-Selecting an item restores its query. **Clear history** deletes the conversation
-and search history from SQLite.
+Open Mira's **History** tab to view locally stored searches and questions. The
+tab shows the current entry count. Selecting an item restores its query and
+returns you to **Chat**, where you can review or edit it before sending.
+**Clear history** deletes the conversation and search history from SQLite.
 
 ## Analytics
 

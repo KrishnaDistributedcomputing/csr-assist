@@ -60,6 +60,9 @@ test("renders the document workspace and Mira", async () => {
   expect(screen.getByRole("heading", { name: /find answers/i })).toBeInTheDocument();
   expect(screen.getByLabelText("Mira assistant")).toBeInTheDocument();
   expect(await screen.findByText("No documents indexed")).toBeInTheDocument();
+  expect(screen.getByText("Hello! How can I help?")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("tab", { name: "All prompts" }));
+  expect(screen.getByText("Summarize the key points")).toBeInTheDocument();
   expect(screen.getAllByRole("button", { name: /Online/ })[0]).toBeDisabled();
   expect(screen.queryByLabelText("Token usage dashboard")).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("tab", { name: /Analytics/ }));
