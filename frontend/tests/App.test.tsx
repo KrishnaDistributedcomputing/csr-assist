@@ -62,11 +62,11 @@ test("renders the document workspace and Mira", async () => {
   expect(await screen.findByText("No documents indexed")).toBeInTheDocument();
   expect(screen.getAllByRole("button", { name: /Online/ })[0]).toBeDisabled();
   expect(screen.queryByLabelText("Token usage dashboard")).not.toBeInTheDocument();
-  fireEvent.click(screen.getByRole("tab", { name: "Analytics" }));
+  fireEvent.click(screen.getByRole("tab", { name: /Analytics/ }));
   expect(await screen.findByLabelText("Token usage dashboard")).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("tab", { name: "Architecture" }));
+  fireEvent.click(screen.getByRole("tab", { name: /Architecture/ }));
   expect(await screen.findByLabelText("System architecture")).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("tab", { name: "Data compliance" }));
+  fireEvent.click(screen.getByRole("tab", { name: /Compliance/ }));
   expect(
     await screen.findByLabelText("Data and accessibility compliance")
   ).toBeInTheDocument();
@@ -86,11 +86,11 @@ test("renders the document workspace and Mira", async () => {
 
 test("workspace tabs support keyboard navigation", async () => {
   render(<App />);
-  const answers = screen.getByRole("tab", { name: "Answer workspace" });
+  const answers = screen.getByRole("tab", { name: "Answers" });
   answers.focus();
   fireEvent.keyDown(answers, { key: "End" });
 
-  const compliance = screen.getByRole("tab", { name: "Data compliance" });
+  const compliance = screen.getByRole("tab", { name: "Compliance" });
   expect(compliance).toHaveAttribute("aria-selected", "true");
   expect(
     await screen.findByLabelText("Data and accessibility compliance")
@@ -231,7 +231,7 @@ test("switches document search to Azure AI online mode", async () => {
   expect(
     screen.getAllByText(/Offline documents are isolated/i).length
   ).toBeGreaterThan(0);
-  fireEvent.click(screen.getByRole("tab", { name: "Data compliance" }));
+  fireEvent.click(screen.getByRole("tab", { name: "Compliance" }));
   expect(
     await screen.findByRole("heading", { name: "Azure processing boundary" })
   ).toBeInTheDocument();
@@ -239,13 +239,13 @@ test("switches document search to Azure AI online mode", async () => {
   expect(
     screen.getByText(/Changing to Online does not upload or synchronize local files/i)
   ).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("tab", { name: "Answer workspace" }));
+  fireEvent.click(screen.getByRole("tab", { name: "Answers" }));
   fireEvent.change(screen.getByLabelText("Search documents"), {
     target: { value: "Cogsdale" }
   });
   fireEvent.click(screen.getByRole("button", { name: "Search" }));
 
-  await screen.findByText("0 offline files");
+  await screen.findByText("Approved online sources");
   expect(
     currentFetch.mock.calls.some(([input]) =>
       String(input).includes("/search?q=Cogsdale&source=online")

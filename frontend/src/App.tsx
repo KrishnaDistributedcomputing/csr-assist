@@ -616,6 +616,7 @@ export default function App() {
 
   return (
     <main className={appClassName}>
+      <a className="skip-link" href="#workspace-content">Skip to workspace</a>
       <header className="topbar">
         <div className="brand">
           <div className="brand-mark"><FileSearch /></div>
@@ -631,7 +632,12 @@ export default function App() {
         <div className="top-actions">
           <span className="local-pill">
             {dataSource === "online" ? <Cloud size={14} /> : <Check size={14} />}
-            {dataSource === "online" ? "Online · Azure AI" : "Offline · Local index"}
+            <span className="mode-label-full">
+              {dataSource === "online" ? "Online · Azure AI" : "Offline · Local index"}
+            </span>
+            <span className="mode-label-short">
+              {dataSource === "online" ? "Online" : "Offline"}
+            </span>
           </span>
           <button
             className="icon-button"
@@ -644,46 +650,61 @@ export default function App() {
       </header>
       {error && <div className="error-banner" role="alert">{error}</div>}
       <div className="workspace">
-        <section className="documents-pane">
+        <section className="documents-pane" id="workspace-content">
           <div className="workspace-heading">
             <div>
               <p className="eyebrow">Document workspace</p>
               <h1>
-                {deployment.read_only_demo
+                {dataSource === "online"
+                  ? "Search approved Azure knowledge"
+                  : deployment.read_only_demo
                   ? "Explore grounded answers from sample content"
                   : "Find answers in your local knowledge"}
               </h1>
               <p>
-                {deployment.read_only_demo
+                {dataSource === "online"
+                  ? "Search and ask questions using only administrator-approved Azure sources."
+                  : deployment.read_only_demo
                   ? "Compare cited answers from the bundled offline index and Azure AI."
                   : "Search, review, and cite documents without sending data anywhere."}
               </p>
             </div>
-            <div className="workspace-actions">
-              <input
-                ref={fileInput}
-                type="file"
-                hidden
-                onChange={(event) => void handleUpload(event.target.files?.[0])}
-              />
-              <button
-                className="secondary"
-                onClick={() => fileInput.current?.click()}
-                disabled={deployment.read_only_demo}
-                title={
-                  deployment.read_only_demo
-                    ? "Uploads are disabled in the public demo"
-                    : undefined
-                }
-              >
-                <Upload size={17} />
-                {deployment.read_only_demo ? "Uploads disabled" : "Upload"}
-              </button>
-              <button className="primary" onClick={() => void handleScan()} disabled={busy}>
-                <RefreshCw size={17} className={scan?.state === "running" ? "spin" : ""} />
-                Scan documents
-              </button>
-            </div>
+            {workspaceTab === "answers" && (
+              dataSource === "online" ? (
+                <div className="managed-source-note">
+                  <Cloud size={19} />
+                  <span>
+                    <strong>Managed Azure index</strong>
+                    <small>Offline files are not available here</small>
+                  </span>
+                </div>
+              ) : (
+                <div className="workspace-actions">
+                  <input
+                    ref={fileInput}
+                    type="file"
+                    hidden
+                    onChange={(event) => void handleUpload(event.target.files?.[0])}
+                  />
+                  {deployment.read_only_demo ? (
+                    <span className="upload-status">
+                      <Upload size={17} /> Uploads disabled
+                    </span>
+                  ) : (
+                    <button
+                      className="secondary"
+                      onClick={() => fileInput.current?.click()}
+                    >
+                      <Upload size={17} /> Upload
+                    </button>
+                  )}
+                  <button className="primary" onClick={() => void handleScan()} disabled={busy}>
+                    <RefreshCw size={17} className={scan?.state === "running" ? "spin" : ""} />
+                    {deployment.read_only_demo ? "Refresh samples" : "Scan documents"}
+                  </button>
+                </div>
+              )
+            )}
           </div>
           <div className="workspace-tabs" role="tablist" aria-label="Workspace panels">
             <button
@@ -696,7 +717,7 @@ export default function App() {
               onClick={() => setWorkspaceTab("answers")}
               onKeyDown={handleWorkspaceTabKeyDown}
             >
-              Answer workspace
+              <Search size={15} /> Answers
             </button>
             <button
               id="workspace-tab-analytics"
@@ -708,7 +729,7 @@ export default function App() {
               onClick={() => setWorkspaceTab("analytics")}
               onKeyDown={handleWorkspaceTabKeyDown}
             >
-              Analytics
+              <RefreshCw size={15} /> Analytics
             </button>
             <button
               id="workspace-tab-architecture"
@@ -720,7 +741,7 @@ export default function App() {
               onClick={() => setWorkspaceTab("architecture")}
               onKeyDown={handleWorkspaceTabKeyDown}
             >
-              Architecture
+              <Menu size={15} /> Architecture
             </button>
             <button
               id="workspace-tab-compliance"
@@ -732,7 +753,7 @@ export default function App() {
               onClick={() => setWorkspaceTab("compliance")}
               onKeyDown={handleWorkspaceTabKeyDown}
             >
-              Data compliance
+              <Check size={15} /> Compliance
             </button>
           </div>
           <div
@@ -759,7 +780,11 @@ export default function App() {
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search policies, procedures, and product information"
+              placeholder={
+                dataSource === "online"
+                  ? "Search approved Azure sources"
+                  : "Search local policies, procedures, and product information"
+              }
               aria-label="Search documents"
             />
             <button disabled={busy || !query.trim()}>Search</button>
@@ -781,35 +806,49 @@ export default function App() {
             <section className="library card">
               <div className="card-heading">
                 <div>
-                  <h2>Documents</h2>
-                  <span>{documents.length} offline files</span>
+                  <h2>{dataSource === "online" ? "Azure search results" : "Documents"}</h2>
+                  <span>
+                    {dataSource === "online"
+                      ? "Approved online sources"
+                      : `${documents.length} offline files`}
+                  </span>
                 </div>
-                {scan && <span className={`status ${scan.state}`}>{scan.state}</span>}
-              </div>
-              <div className="document-list">
-                {documents.length === 0 && (
-                  <div className="empty">
-                    <FileSearch size={30} />
-                    <strong>No documents indexed</strong>
-                    <span>
-                      {deployment.read_only_demo
-                        ? "The bundled sample is being prepared."
-                        : "Upload a file or scan the mounted document folder."}
-                    </span>
-                  </div>
+                {dataSource === "offline" && scan && (
+                  <span className={`status ${scan.state}`}>{scan.state}</span>
                 )}
-                {documents.map((document) => (
-                  <div className="document-row" key={document.id}>
-                    <div className="file-icon">{document.extension.slice(1).toUpperCase()}</div>
-                    <div>
-                      <strong>{document.name}</strong>
-                      <span>{document.relative_path} · {document.chunk_count} excerpts</span>
-                      {document.error && <small>{document.error}</small>}
-                    </div>
-                    <span className={`status ${document.status}`}>{document.status}</span>
-                  </div>
-                ))}
               </div>
+              {dataSource === "offline" ? (
+                <div className="document-list">
+                  {documents.length === 0 && (
+                    <div className="empty">
+                      <FileSearch size={30} />
+                      <strong>No documents indexed</strong>
+                      <span>
+                        {deployment.read_only_demo
+                          ? "The bundled sample is being prepared."
+                          : "Upload a file or scan the mounted document folder."}
+                      </span>
+                    </div>
+                  )}
+                  {documents.map((document) => (
+                    <div className="document-row" key={document.id}>
+                      <div className="file-icon">{document.extension.slice(1).toUpperCase()}</div>
+                      <div>
+                        <strong>{document.name}</strong>
+                        <span>{document.relative_path} · {document.chunk_count} excerpts</span>
+                        {document.error && <small>{document.error}</small>}
+                      </div>
+                      <span className={`status ${document.status}`}>{document.status}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : results.length === 0 ? (
+                <div className="empty">
+                  <Cloud size={30} />
+                  <strong>Search the Azure index</strong>
+                  <span>Results will include only approved online sources.</span>
+                </div>
+              ) : null}
               {results.length > 0 && (
                 <div className="results">
                   <h3>Search results</h3>
@@ -846,7 +885,11 @@ export default function App() {
                 <div className="empty">
                   <Search size={30} />
                   <strong>Select a result</strong>
-                  <span>The exact local excerpt will appear here.</span>
+                  <span>
+                    {dataSource === "online"
+                      ? "The exact approved Azure excerpt will appear here."
+                      : "The exact local excerpt will appear here."}
+                  </span>
                 </div>
               )}
             </section>
@@ -900,7 +943,8 @@ export default function App() {
         aria-label="Open Mira"
         onClick={() => setMobileOpen(true)}
       >
-        <Bot />
+        <Bot size={20} />
+        <span>Ask Mira</span>
       </button>
       {mobileOpen && (
         <div className="mobile-drawer mobile-only">
