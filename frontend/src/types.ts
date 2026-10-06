@@ -1,0 +1,105 @@
+export interface DocumentRecord {
+  id: number;
+  relative_path: string;
+  name: string;
+  extension: string;
+  size_bytes: number;
+  status: "pending" | "processing" | "ready" | "error" | "unsupported";
+  error?: string;
+  chunk_count: number;
+}
+
+export interface Source {
+  document_id: number;
+  chunk_id: number;
+  name: string;
+  relative_path: string;
+  location: string;
+  text: string;
+  extraction: "native" | "ocr" | "structured";
+}
+
+export interface SearchResponse {
+  query: string;
+  results: Source[];
+}
+
+export interface ModelRecord {
+  id: string;
+  provider: "Microsoft" | "Meta" | "Alibaba" | "Google" | "Hugging Face";
+  name: string;
+  installed: boolean;
+  available: boolean;
+  active: boolean;
+}
+
+export interface ChatResponse {
+  state: "answered" | "insufficient-evidence" | "model-missing";
+  text: string;
+  model: string;
+  citations: Array<{
+    number: number;
+    document_id: number;
+    chunk_id: number;
+    name: string;
+    location: string;
+  }>;
+  sources: Source[];
+  cached: boolean;
+  history_id: number;
+}
+
+export interface ScanStatus {
+  id: string;
+  state: "idle" | "running" | "completed" | "completed-errors";
+  discovered: number;
+  processed: number;
+  unchanged: number;
+  removed: number;
+  errors: number;
+}
+
+export interface HistoryEntry {
+  id: number;
+  kind: "search" | "chat";
+  query: string;
+  response_text?: string;
+  response_state?: string;
+  model?: string;
+  sources: Source[];
+  created_at: string;
+}
+
+export interface UsageDashboard {
+  totals: {
+    requests: number;
+    cache_hits: number;
+    cache_hit_rate: number;
+    prompt_tokens: number;
+    output_tokens: number;
+    total_tokens: number;
+    avg_latency_ms: number;
+  };
+  by_model: Array<{
+    model: string;
+    mode: string;
+    requests: number;
+    prompt_tokens: number;
+    output_tokens: number;
+    avg_latency_ms: number;
+  }>;
+  daily: Array<{
+    date: string;
+    requests: number;
+    tokens: number;
+    cache_hits: number;
+  }>;
+  key_facts: number;
+  cached_answers: number;
+  corpus_revision: number;
+  feedback: {
+    total: number;
+    good: number;
+    bad: number;
+  };
+}

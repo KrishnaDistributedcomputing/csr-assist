@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CSR Assist Embed Demo</title>
+    <style>
+      body { margin: 0; padding: 64px; font-family: system-ui; color: #173047; background: #eef5f6; }
+      main { max-width: 760px; margin: auto; padding: 40px; border-radius: 20px; background: white; }
+      code { padding: 3px 6px; border-radius: 5px; background: #e5efef; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <p>LOCAL DEMONSTRATION</p>
+      <h1>CSR Assist embedded Mira widget</h1>
+      <p>
+        The launcher opens an isolated iframe. CSR Assist does not read or send
+        this host page’s content.
+      </p>
+      <p>Try <code>window.CSRAssist.open()</code> in the console.</p>
+    </main>
+    <script src="/embed.js" data-position="right" data-assistant-name="Mira"></script>
+  </body>
+</html>

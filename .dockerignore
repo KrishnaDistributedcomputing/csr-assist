@@ -1,0 +1,16 @@
+.git/
+.github/
+.specify/
+specs/
+backend/tests/
+frontend/tests/
+node_modules/
+frontend/dist/
+__pycache__/
+.pytest_cache/
+.venv/
+.data/
+.env*
+*.log*
+coverage/
+README.md
