@@ -252,3 +252,74 @@ test("switches document search to Azure AI online mode", async () => {
     )
   ).toBe(true);
 });
+
+test("shows Azure-specific progress while Online chat is pending", async () => {
+  let finishChat: ((response: Response) => void) | undefined;
+  const currentFetch = vi.mocked(fetch);
+  currentFetch.mockImplementation(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes("/chat")) {
+      return new Promise<Response>((resolve) => {
+        finishChat = resolve;
+      });
+    }
+    const value = url.includes("/deployment")
+      ? {
+          read_only_demo: true,
+          online_available: true,
+          online_model: "phi-4-mini"
+        }
+      : url.includes("/scan/status")
+        ? {
+            state: "idle",
+            id: "",
+            discovered: 0,
+            processed: 0,
+            unchanged: 0,
+            removed: 0,
+            errors: 0
+          }
+        : [];
+    return new Response(JSON.stringify(value), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+  });
+
+  render(<App />);
+  const onlineButtons = await screen.findAllByRole("button", { name: /Online/ });
+  const onlineButton = onlineButtons[onlineButtons.length - 1];
+  await waitFor(() => expect(onlineButton).not.toBeDisabled());
+  fireEvent.click(onlineButton);
+  fireEvent.change(screen.getByLabelText("Message Mira"), {
+    target: { value: "What is Cogsdale?" }
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+  expect(screen.getByRole("status")).toHaveTextContent(
+    "Mira is reviewing Azure sources"
+  );
+  expect(screen.getByRole("status")).toHaveTextContent(
+    "Checking approved Azure sources"
+  );
+
+  await act(async () => {
+    finishChat?.(
+      new Response(
+        JSON.stringify({
+          state: "insufficient-evidence",
+          text: "No supported answer.",
+          model: "azure-foundry:phi-4-mini",
+          citations: [],
+          sources: [],
+          cached: false,
+          history_id: 0
+        }),
+        {
+          status: 200,
+          headers: { "Content-Type": "application/json" }
+        }
+      )
+    );
+  });
+});

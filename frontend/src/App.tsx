@@ -48,11 +48,18 @@ const searchProgressMessages = [
   "Checking full document excerpts",
   "Ranking the best matches"
 ];
-const chatProgressMessages = [
+const offlineChatProgressMessages = [
   "Checking the previous-answer cache",
   "Searching extracted key facts",
   "Ranking retrieved sources",
   "Preparing citations"
+];
+const onlineChatProgressMessages = [
+  "Checking approved Azure sources",
+  "Searching Azure AI Search",
+  "Reviewing grounded excerpts",
+  "Requesting Azure AI Foundry",
+  "Preparing a cited response"
 ];
 const AnalyticsPanel = lazy(() => import("./AnalyticsPanel"));
 const ArchitecturePanel = lazy(() => import("./ArchitecturePanel"));
@@ -100,7 +107,9 @@ export default function App() {
   const [usageLoaded, setUsageLoaded] = useState(false);
   const [feedbackRating, setFeedbackRating] = useState<"good" | "bad" | null>(null);
   const [chatPending, setChatPending] = useState(false);
-  const [chatProgress, setChatProgress] = useState(chatProgressMessages[0]);
+  const [chatProgress, setChatProgress] = useState(
+    offlineChatProgressMessages[0]
+  );
   const [searchProgress, setSearchProgress] = useState("");
   const [chatError, setChatError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -245,11 +254,15 @@ export default function App() {
     setBusy(true);
     setChatPending(true);
     setAssistantTab("chat");
-    setChatProgress(chatProgressMessages[0]);
+    const progressMessages =
+      dataSource === "online"
+        ? onlineChatProgressMessages
+        : offlineChatProgressMessages;
+    setChatProgress(progressMessages[0]);
     let progressIndex = 0;
     const progressTimer = window.setInterval(() => {
-      progressIndex = Math.min(progressIndex + 1, chatProgressMessages.length - 1);
-      setChatProgress(chatProgressMessages[progressIndex]);
+      progressIndex = Math.min(progressIndex + 1, progressMessages.length - 1);
+      setChatProgress(progressMessages[progressIndex]);
     }, 700);
     setChatError("");
     try {
@@ -439,7 +452,11 @@ export default function App() {
             <div className="chat-progress" role="status">
               <RefreshCw className="spin" size={18} />
               <div>
-                <strong>Mira is reviewing the local sources</strong>
+                <strong>
+                  {dataSource === "online"
+                    ? "Mira is reviewing Azure sources"
+                    : "Mira is reviewing local sources"}
+                </strong>
                 <span>{chatProgress}</span>
               </div>
             </div>
