@@ -73,28 +73,124 @@ const ESTIMATED_OUTPUT_TOKENS = 120;
 const tourSteps = [
   {
     target: "environment",
+    section: "Deployment",
     title: "Choose an environment",
-    detail: "Use Docker for the on-premises experience or Azure for approved cloud services. Switching changes the data boundary; it does not move documents."
+    detail: "Compare the on-premises Docker experience with the managed Azure path.",
+    features: [
+      "Docker keeps retrieval and optional Ollama inference local.",
+      "Azure uses approved Azure AI Search and Foundry services."
+    ],
+    workspaceTab: "answers"
   },
   {
     target: "source",
+    section: "Data boundary",
     title: "Confirm the knowledge boundary",
-    detail: "The source notice shows exactly which content can be searched. Offline and Online sources remain isolated."
+    detail: "The source notice always identifies which content is eligible for the current request.",
+    features: [
+      "Offline and Online indexes remain isolated.",
+      "Changing the preview never copies or uploads documents."
+    ],
+    workspaceTab: "answers"
   },
   {
     target: "search",
-    title: "Search and review evidence",
-    detail: "Enter a question or keyword, then inspect the matching excerpt before using it in a response."
+    section: "Discovery",
+    title: "Search approved knowledge",
+    detail: "Enter a question, policy phrase, product name, or keyword to retrieve ranked matches.",
+    features: [
+      "Progress messages show retrieval and ranking activity.",
+      "Channel badges distinguish local and Azure results."
+    ],
+    workspaceTab: "answers"
   },
   {
-    target: "workspace",
-    title: "Explore the workspace",
-    detail: "Open Analytics for usage, Architecture for model and cost details, and Compliance for data-boundary responsibilities."
+    target: "evidence",
+    section: "Evidence",
+    title: "Review exact source excerpts",
+    detail: "Select a result to inspect the supporting passage before using or sharing an answer.",
+    features: [
+      "Document metadata identifies the source and location.",
+      "Mira citations reopen the same reviewable evidence."
+    ],
+    workspaceTab: "answers"
+  },
+  {
+    target: "analytics",
+    section: "Operations",
+    title: "Track quality and performance",
+    detail: "Analytics summarizes request volume, latency, cache efficiency, token usage, and feedback.",
+    features: [
+      "Compare activity by model and day.",
+      "Use cache and latency metrics to tune responsiveness."
+    ],
+    workspaceTab: "analytics"
+  },
+  {
+    target: "architecture",
+    section: "Technical design",
+    title: "Explore architecture and LLM costs",
+    detail: "Architecture explains both deployment paths, request routing, service inventory, and model economics.",
+    features: [
+      "Compare every enabled Docker and Azure model.",
+      "Review region, service tier, token rates, and data flow."
+    ],
+    workspaceTab: "architecture"
+  },
+  {
+    target: "compliance",
+    section: "Governance",
+    title: "Check compliance responsibilities",
+    detail: "Compliance makes implemented safeguards and customer-owned controls visible for each boundary.",
+    features: [
+      "Review retention, access, accessibility, and data handling.",
+      "Use the checklist as guidance, not as a certification."
+    ],
+    workspaceTab: "compliance"
+  },
+  {
+    target: "model",
+    section: "Model routing",
+    title: "Select the right LLM",
+    detail: "Mira routes each request only to an available, server-approved model for the active environment.",
+    features: [
+      "Docker offers installed Ollama models or fast retrieval without an LLM.",
+      "Azure shows allowlisted Foundry deployments and estimated token cost."
+    ],
+    workspaceTab: "answers"
+  },
+  {
+    target: "prompts",
+    section: "Prompting",
+    title: "Start with a guided prompt",
+    detail: "Use common support tasks as a starting point, then edit the prompt before sending.",
+    features: [
+      "Draft responses, compare instructions, summarize, or identify gaps.",
+      "Prompt selection never submits automatically."
+    ],
+    workspaceTab: "answers"
+  },
+  {
+    target: "composer",
+    section: "Grounded chat",
+    title: "Ask Mira with source context",
+    detail: "Write a focused question and send it to the selected retrieval and model path.",
+    features: [
+      "Live stages distinguish retrieval, generation, and citation work.",
+      "Errors remain explicit and can be dismissed before retrying."
+    ],
+    workspaceTab: "answers"
   },
   {
     target: "assistant",
-    title: "Ask Mira",
-    detail: "Choose an available LLM, review the estimated token cost, use a suggested prompt, or write your own grounded question."
+    section: "Review and reuse",
+    title: "Validate the final answer",
+    detail: "Review citations before sharing, then copy the response or record feedback when the deployment allows it.",
+    features: [
+      "Source cards open the exact excerpts used by Mira.",
+      "History is private in production and disabled in the public demo."
+    ],
+    workspaceTab: "answers"
   }
 ] as const;
 const AnalyticsPanel = lazy(() => import("./AnalyticsPanel"));
@@ -161,6 +257,10 @@ export default function App() {
   const fileInput = useRef<HTMLInputElement>(null);
   const helpButton = useRef<HTMLButtonElement>(null);
   const tourDialog = useRef<HTMLDivElement>(null);
+  const tourOrigin = useRef<{
+    workspaceTab: WorkspaceTab;
+    assistantTab: "chat" | "history";
+  } | null>(null);
 
   const appClassName = [
     "app",
@@ -217,6 +317,29 @@ export default function App() {
     }
   }
 
+  function goToTourStep(index: number) {
+    const nextStep = tourSteps[index];
+    setWorkspaceTab(nextStep.workspaceTab);
+    setAssistantTab("chat");
+    setTourStep(index);
+  }
+
+  function startTour() {
+    tourOrigin.current = { workspaceTab, assistantTab };
+    goToTourStep(0);
+  }
+
+  function closeTour() {
+    const origin = tourOrigin.current;
+    if (origin) {
+      setWorkspaceTab(origin.workspaceTab);
+      setAssistantTab(origin.assistantTab);
+    }
+    tourOrigin.current = null;
+    setTourStep(null);
+    window.requestAnimationFrame(() => helpButton.current?.focus());
+  }
+
   useEffect(() => {
     void refresh();
     const modelTimer = window.setTimeout(() => {
@@ -268,8 +391,7 @@ export default function App() {
 
     function closeOnEscape(event: globalThis.KeyboardEvent) {
       if (event.key === "Escape") {
-        setTourStep(null);
-        window.requestAnimationFrame(() => helpButton.current?.focus());
+        closeTour();
       }
     }
     window.addEventListener("keydown", closeOnEscape);
@@ -278,11 +400,6 @@ export default function App() {
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [tourStep]);
-
-  function closeTour() {
-    setTourStep(null);
-    window.requestAnimationFrame(() => helpButton.current?.focus());
-  }
 
   useEffect(() => {
     if (assistantTab !== "history" || historyLoaded) return;
@@ -499,7 +616,7 @@ export default function App() {
         <p className={`source-boundary-notice ${dataSource}`} role="note">
           {sourceBoundaryMessage}
         </p>
-        <div className="model-selector">
+        <div className="model-selector" data-tour="model">
           <label htmlFor="chat-model">
             {dataSource === "online" ? "Azure LLM model" : "Docker LLM model"}
           </label>
@@ -572,7 +689,12 @@ export default function App() {
           </div>
         </div>
       </div>
-      <div className="assistant-tabs" role="tablist" aria-label="Mira panels">
+      <div
+        className="assistant-tabs"
+        role="tablist"
+        aria-label="Mira panels"
+        data-tour="prompts"
+      >
         <button
           role="tab"
           aria-selected={assistantTab === "chat"}
@@ -805,7 +927,7 @@ export default function App() {
       </div>
       {assistantTab === "chat" && (
         <>
-          <form className="chat-form" onSubmit={handleChat}>
+          <form className="chat-form" onSubmit={handleChat} data-tour="composer">
             <textarea
               value={message}
               onChange={(event) => setMessage(event.target.value)}
@@ -897,7 +1019,7 @@ export default function App() {
             ref={helpButton}
             className="help-button"
             type="button"
-            onClick={() => setTourStep(0)}
+            onClick={startTour}
           >
             <CircleHelp size={16} /> How to use
           </button>
@@ -1069,7 +1191,7 @@ export default function App() {
               </div>
             </div>
           )}
-          <div className="content-grid">
+          <div className="content-grid" data-tour="evidence">
             <section className="library card">
               <div className="card-heading">
                 <div>
@@ -1167,6 +1289,7 @@ export default function App() {
               id="workspace-panel-analytics"
               role="tabpanel"
               aria-labelledby="workspace-tab-analytics"
+              data-tour="analytics"
             >
               <Suspense fallback={<PanelLoading label="Loading local analytics" />}>
                 {usage ? (
@@ -1182,6 +1305,7 @@ export default function App() {
               id="workspace-panel-architecture"
               role="tabpanel"
               aria-labelledby="workspace-tab-architecture"
+              data-tour="architecture"
             >
               <Suspense fallback={<PanelLoading label="Loading architecture" />}>
                 <ArchitecturePanel
@@ -1196,6 +1320,7 @@ export default function App() {
               id="workspace-panel-compliance"
               role="tabpanel"
               aria-labelledby="workspace-tab-compliance"
+              data-tour="compliance"
             >
               <Suspense fallback={<PanelLoading label="Loading compliance details" />}>
                 <CompliancePanel
@@ -1238,7 +1363,10 @@ export default function App() {
           tabIndex={-1}
         >
           <div className="tour-heading">
-            <span>Guided demo · {tourStep + 1} of {tourSteps.length}</span>
+            <span>
+              Guided demo · {tourSteps[tourStep].section} · {tourStep + 1} of{" "}
+              {tourSteps.length}
+            </span>
             <button aria-label="Close guided demo" onClick={closeTour}>
               <X size={18} />
             </button>
@@ -1246,11 +1374,19 @@ export default function App() {
           <div className="tour-icon"><Sparkles size={20} /></div>
           <h2 id="tour-title">{tourSteps[tourStep].title}</h2>
           <p id="tour-detail">{tourSteps[tourStep].detail}</p>
-          <div className="tour-progress" aria-hidden="true">
+          <ul className="tour-features">
+            {tourSteps[tourStep].features.map((feature) => (
+              <li key={feature}><Check size={14} /> <span>{feature}</span></li>
+            ))}
+          </ul>
+          <div className="tour-progress" aria-label="Guided demo steps">
             {tourSteps.map((step, index) => (
-              <span
-                key={step.target}
+              <button
+                key={step.title}
                 className={index === tourStep ? "active" : ""}
+                aria-label={`Go to step ${index + 1}: ${step.title}`}
+                aria-current={index === tourStep ? "step" : undefined}
+                onClick={() => goToTourStep(index)}
               />
             ))}
           </div>
@@ -1260,7 +1396,7 @@ export default function App() {
               <button
                 className="secondary"
                 disabled={tourStep === 0}
-                onClick={() => setTourStep((step) => Math.max((step ?? 0) - 1, 0))}
+                onClick={() => goToTourStep(Math.max(tourStep - 1, 0))}
               >
                 Back
               </button>
@@ -1268,7 +1404,7 @@ export default function App() {
                 className="primary"
                 onClick={() => {
                   if (tourStep === tourSteps.length - 1) closeTour();
-                  else setTourStep(tourStep + 1);
+                  else goToTourStep(tourStep + 1);
                 }}
               >
                 {tourStep === tourSteps.length - 1 ? "Finish" : "Next"}

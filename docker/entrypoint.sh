@@ -7,6 +7,7 @@
 set -euo pipefail
 
 main() {
+  export OLLAMA_MODELS="${OLLAMA_MODELS:-/data/models}"
   mkdir -p \
     /data/documents \
     /data/index \

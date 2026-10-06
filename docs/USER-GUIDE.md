@@ -24,37 +24,45 @@ opens the mobile assistant.
 
 Select **How to use** in the top-right header, next to the environment selector
 or active environment badge. On small screens, the same control appears as a
-compact help icon. The interactive tour introduces the workspace in five
+compact help icon. The interactive tour introduces the workspace in eleven
 steps:
 
-1. Choose an environment. The tour highlights the Docker or Azure preview in
-   the public demo, or the active Online or Offline environment badge in other
-   deployments.
-2. Confirm the knowledge boundary. The source notice identifies which content
-   the selected environment can search and keeps Online and Offline sources
-   separate.
-3. Search and review evidence. The tour points to document search, where you
-   can enter a question or keyword and inspect matching excerpts.
-4. Explore the workspace panels. The navigation provides Answers, Analytics,
-   Architecture, and Compliance views for evidence, usage, model and cost
-   details, and data-boundary responsibilities.
-5. Ask Mira. The assistant provides the available model selector, estimated
-   token cost, suggested prompts, and grounded question composer.
+1. Choose an environment to compare the on-premises Docker path with managed
+   Azure services.
+2. Confirm the knowledge boundary and see how Online and Offline indexes stay
+   isolated.
+3. Search approved knowledge with a question, policy phrase, product name, or
+   keyword.
+4. Review exact source excerpts, document metadata, and citation evidence.
+5. Track request volume, latency, caching, token use, and feedback in
+   Analytics.
+6. Explore architecture, Azure service inventory, model routing, and the LLM
+   cost matrix.
+7. Check implemented safeguards and customer responsibilities in Compliance.
+8. Select an available Docker or Azure model and review its estimated cost.
+9. Start with a guided support prompt, then review or edit it before sending.
+10. Ask Mira with the selected source and model context while following live
+    retrieval, generation, and citation stages.
+11. Validate citations, copy the final answer, provide feedback, and understand
+    when history is available.
 
 Use **Next** to advance and **Back** to revisit a step. **Back** is unavailable
-on the first step. On the final step, **Finish** replaces **Next**. Select
-**Skip tour**, use the close button, or press Escape to leave the tour at any
-time. When the tour closes, keyboard focus returns to the **How to use**
-control.
+on the first step. Select any progress marker to move directly to a feature.
+The tour opens the relevant Answers, Analytics, Architecture, or Compliance
+panel as you navigate. On the final step, **Finish** replaces **Next**.
 
-The tour highlights the visible version of each target and scrolls it into
-view. This behavior lets the same steps follow the desktop workspace or the
-responsive mobile layout without opening hidden controls.
+Select **Skip tour**, use the close button, or press Escape to leave at any
+time. The workspace returns to the panel and Mira tab that were active before
+the tour started, and keyboard focus returns to **How to use**.
+
+Each step highlights the visible feature, scrolls it into view, and includes
+two concise capability notes. This behavior lets the same walkthrough follow
+the desktop workspace or responsive mobile layout.
 
 > [!NOTE]
 > The guided demo is read-only. It does not submit questions, switch
-> environments, move documents, or change stored data. It only explains and
-> highlights controls.
+> environments, move documents, or change stored data. Panel changes during
+> the walkthrough are temporary and are restored when the tour closes.
 
 ## Answers
 

@@ -199,9 +199,21 @@ select:focus-visible {
 .tour-icon { display: grid; place-items: center; width: 42px; height: 42px; margin-top: 14px; color: white; border-radius: 13px; background: var(--teal); }
 .tour-dialog h2 { margin: 12px 0 6px; font-size: 19px; }
 .tour-dialog p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.tour-features {
+  display: grid; gap: 7px; margin: 14px 0 0; padding: 0; list-style: none;
+}
+.tour-features li {
+  display: flex; align-items: flex-start; gap: 7px; color: var(--text);
+  font-size: 11px; line-height: 1.45;
+}
+.tour-features svg { flex: 0 0 auto; margin-top: 1px; color: var(--teal); }
 .tour-progress { display: flex; gap: 5px; margin: 17px 0; }
-.tour-progress span { width: 24px; height: 4px; border-radius: 999px; background: var(--border); }
-.tour-progress span.active { background: var(--teal); }
+.tour-progress button {
+  width: 24px; height: 6px; padding: 0; border: 0; border-radius: 999px;
+  background: var(--border);
+}
+.tour-progress button:hover, .tour-progress button:focus-visible { background: #8bbfbc; }
+.tour-progress button.active { background: var(--teal); }
 .tour-actions, .tour-actions > div { display: flex; align-items: center; gap: 8px; }
 .tour-actions { justify-content: space-between; }
 .tour-actions .primary, .tour-actions .secondary { padding: 8px 12px; font-size: 11px; }

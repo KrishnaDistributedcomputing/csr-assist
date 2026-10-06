@@ -123,13 +123,22 @@ test("guided demo explains the workspace step by step", async () => {
   expect(
     screen.getByRole("heading", { name: "Choose an environment" })
   ).toBeInTheDocument();
-  expect(screen.getByText("Guided demo · 1 of 5")).toBeInTheDocument();
+  expect(screen.getByText(/Guided demo · Deployment · 1 of 11/)).toBeInTheDocument();
+  expect(
+    screen.getByText("Docker keeps retrieval and optional Ollama inference local.")
+  ).toBeInTheDocument();
 
   for (const title of [
     "Confirm the knowledge boundary",
-    "Search and review evidence",
-    "Explore the workspace",
-    "Ask Mira"
+    "Search approved knowledge",
+    "Review exact source excerpts",
+    "Track quality and performance",
+    "Explore architecture and LLM costs",
+    "Check compliance responsibilities",
+    "Select the right LLM",
+    "Start with a guided prompt",
+    "Ask Mira with source context",
+    "Validate the final answer"
   ]) {
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
     expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
@@ -138,6 +147,34 @@ test("guided demo explains the workspace step by step", async () => {
   fireEvent.click(screen.getByRole("button", { name: "Finish" }));
   expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   await waitFor(() => expect(help).toHaveFocus());
+});
+
+test("guided demo supports direct feature navigation and restores the workspace", async () => {
+  render(<App />);
+  fireEvent.click(screen.getByRole("tab", { name: /Compliance/ }));
+  expect(
+    await screen.findByLabelText("Data and accessibility compliance")
+  ).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("button", { name: "How to use" }));
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "Go to step 6: Explore architecture and LLM costs"
+    })
+  );
+
+  expect(
+    screen.getByRole("heading", { name: "Explore architecture and LLM costs" })
+  ).toBeInTheDocument();
+  expect(
+    await screen.findByLabelText("System architecture")
+  ).toBeInTheDocument();
+
+  fireEvent.click(screen.getByRole("button", { name: "Close guided demo" }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  expect(
+    await screen.findByLabelText("Data and accessibility compliance")
+  ).toBeInTheDocument();
 });
 
 test("public demo can preview Docker and Azure environments", async () => {
