@@ -113,6 +113,33 @@ test("workspace tabs support keyboard navigation", async () => {
   ).toBeInTheDocument();
 });
 
+test("guided demo explains the workspace step by step", async () => {
+  render(<App />);
+  const help = screen.getByRole("button", { name: "How to use" });
+
+  fireEvent.click(help);
+
+  expect(screen.getByRole("dialog")).toBeInTheDocument();
+  expect(
+    screen.getByRole("heading", { name: "Choose an environment" })
+  ).toBeInTheDocument();
+  expect(screen.getByText("Guided demo · 1 of 5")).toBeInTheDocument();
+
+  for (const title of [
+    "Confirm the knowledge boundary",
+    "Search and review evidence",
+    "Explore the workspace",
+    "Ask Mira"
+  ]) {
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    expect(screen.getByRole("heading", { name: title })).toBeInTheDocument();
+  }
+
+  fireEvent.click(screen.getByRole("button", { name: "Finish" }));
+  expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  await waitFor(() => expect(help).toHaveFocus());
+});
+
 test("public demo can preview Docker and Azure environments", async () => {
   const currentFetch = vi.mocked(fetch);
   let chatRequest: Record<string, string> | undefined;

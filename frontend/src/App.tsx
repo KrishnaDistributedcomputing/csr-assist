@@ -1,6 +1,7 @@
 import {
   Bot,
   Check,
+  CircleHelp,
   Cloud,
   Clipboard,
   FileSearch,
@@ -69,6 +70,33 @@ const onlineChatProgressMessages = [
 ];
 const ESTIMATED_INPUT_TOKENS = 2000;
 const ESTIMATED_OUTPUT_TOKENS = 120;
+const tourSteps = [
+  {
+    target: "environment",
+    title: "Choose an environment",
+    detail: "Use Docker for the on-premises experience or Azure for approved cloud services. Switching changes the data boundary; it does not move documents."
+  },
+  {
+    target: "source",
+    title: "Confirm the knowledge boundary",
+    detail: "The source notice shows exactly which content can be searched. Offline and Online sources remain isolated."
+  },
+  {
+    target: "search",
+    title: "Search and review evidence",
+    detail: "Enter a question or keyword, then inspect the matching excerpt before using it in a response."
+  },
+  {
+    target: "workspace",
+    title: "Explore the workspace",
+    detail: "Open Analytics for usage, Architecture for model and cost details, and Compliance for data-boundary responsibilities."
+  },
+  {
+    target: "assistant",
+    title: "Ask Mira",
+    detail: "Choose an available LLM, review the estimated token cost, use a suggested prompt, or write your own grounded question."
+  }
+] as const;
 const AnalyticsPanel = lazy(() => import("./AnalyticsPanel"));
 const ArchitecturePanel = lazy(() => import("./ArchitecturePanel"));
 const CompliancePanel = lazy(() => import("./CompliancePanel"));
@@ -129,7 +157,10 @@ export default function App() {
   const [chatError, setChatError] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [tourStep, setTourStep] = useState<number | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const helpButton = useRef<HTMLButtonElement>(null);
+  const tourDialog = useRef<HTMLDivElement>(null);
 
   const appClassName = [
     "app",
@@ -218,6 +249,40 @@ export default function App() {
       window.clearInterval(timer);
     };
   }, []);
+
+  useEffect(() => {
+    document.querySelectorAll(".tour-highlight").forEach((element) => {
+      element.classList.remove("tour-highlight");
+    });
+    if (tourStep == null) return;
+
+    const step = tourSteps[tourStep];
+    const target = Array.from(
+      document.querySelectorAll<HTMLElement>(
+        `[data-tour="${step.target}"]`
+      )
+    ).find((element) => element.getClientRects().length > 0);
+    target?.classList.add("tour-highlight");
+    target?.scrollIntoView({ behavior: "smooth", block: "center" });
+    tourDialog.current?.focus();
+
+    function closeOnEscape(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") {
+        setTourStep(null);
+        window.requestAnimationFrame(() => helpButton.current?.focus());
+      }
+    }
+    window.addEventListener("keydown", closeOnEscape);
+    return () => {
+      target?.classList.remove("tour-highlight");
+      window.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [tourStep]);
+
+  function closeTour() {
+    setTourStep(null);
+    window.requestAnimationFrame(() => helpButton.current?.focus());
+  }
 
   useEffect(() => {
     if (assistantTab !== "history" || historyLoaded) return;
@@ -789,7 +854,7 @@ export default function App() {
         </div>
         <div className="top-actions">
           {deployment.read_only_demo ? (
-            <div className="environment-preview">
+            <div className="environment-preview" data-tour="environment">
               <span>Environment preview</span>
               <div
                 className="environment-toggle"
@@ -818,7 +883,7 @@ export default function App() {
               </div>
             </div>
           ) : (
-            <span className="local-pill">
+            <span className="local-pill" data-tour="environment">
               {dataSource === "online" ? <Cloud size={14} /> : <Check size={14} />}
               <span className="mode-label-full">
                 {dataSource === "online" ? "Online · Azure AI" : "Offline · Local index"}
@@ -828,6 +893,14 @@ export default function App() {
               </span>
             </span>
           )}
+          <button
+            ref={helpButton}
+            className="help-button"
+            type="button"
+            onClick={() => setTourStep(0)}
+          >
+            <CircleHelp size={16} /> How to use
+          </button>
           <button
             className="icon-button"
             aria-label="Toggle dark mode"
@@ -895,7 +968,12 @@ export default function App() {
               )
             )}
           </div>
-          <div className="workspace-tabs" role="tablist" aria-label="Workspace panels">
+          <div
+            className="workspace-tabs"
+            role="tablist"
+            aria-label="Workspace panels"
+            data-tour="workspace"
+          >
             <button
               id="workspace-tab-answers"
               role="tab"
@@ -951,7 +1029,7 @@ export default function App() {
             aria-labelledby="workspace-tab-answers"
             hidden={workspaceTab !== "answers"}
           >
-          <div className="source-mode-bar">
+          <div className="source-mode-bar" data-tour="source">
             <div>
               <strong>
                 {dataSource === "online" ? "Online search" : "Offline search"}
@@ -964,7 +1042,7 @@ export default function App() {
             </div>
             {sourceToggle}
           </div>
-          <form className="search-bar" onSubmit={handleSearch}>
+          <form className="search-bar" onSubmit={handleSearch} data-tour="search">
             <Search size={20} />
             <input
               value={query}
@@ -1128,11 +1206,12 @@ export default function App() {
             </div>
           )}
         </section>
-        <aside className="desktop-assistant">{assistant}</aside>
+        <aside className="desktop-assistant" data-tour="assistant">{assistant}</aside>
       </div>
       <button
         className="mira-fab mobile-only"
         aria-label="Open Mira"
+        data-tour="assistant"
         onClick={() => setMobileOpen(true)}
       >
         <Bot size={20} />
@@ -1146,6 +1225,56 @@ export default function App() {
             onClick={() => setMobileOpen(false)}
           />
           {assistant}
+        </div>
+      )}
+      {tourStep != null && (
+        <div
+          className="tour-dialog"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="tour-title"
+          aria-describedby="tour-detail"
+          ref={tourDialog}
+          tabIndex={-1}
+        >
+          <div className="tour-heading">
+            <span>Guided demo · {tourStep + 1} of {tourSteps.length}</span>
+            <button aria-label="Close guided demo" onClick={closeTour}>
+              <X size={18} />
+            </button>
+          </div>
+          <div className="tour-icon"><Sparkles size={20} /></div>
+          <h2 id="tour-title">{tourSteps[tourStep].title}</h2>
+          <p id="tour-detail">{tourSteps[tourStep].detail}</p>
+          <div className="tour-progress" aria-hidden="true">
+            {tourSteps.map((step, index) => (
+              <span
+                key={step.target}
+                className={index === tourStep ? "active" : ""}
+              />
+            ))}
+          </div>
+          <div className="tour-actions">
+            <button className="tour-skip" onClick={closeTour}>Skip tour</button>
+            <div>
+              <button
+                className="secondary"
+                disabled={tourStep === 0}
+                onClick={() => setTourStep((step) => Math.max((step ?? 0) - 1, 0))}
+              >
+                Back
+              </button>
+              <button
+                className="primary"
+                onClick={() => {
+                  if (tourStep === tourSteps.length - 1) closeTour();
+                  else setTourStep(tourStep + 1);
+                }}
+              >
+                {tourStep === tourSteps.length - 1 ? "Finish" : "Next"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </main>

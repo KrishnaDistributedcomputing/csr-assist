@@ -20,6 +20,42 @@ All four sections remain visible in a two-column grid on small screens. The
 header displays the active Online or Offline mode, and the **Ask Mira** button
 opens the mobile assistant.
 
+### Follow the guided demo
+
+Select **How to use** in the top-right header, next to the environment selector
+or active environment badge. On small screens, the same control appears as a
+compact help icon. The interactive tour introduces the workspace in five
+steps:
+
+1. Choose an environment. The tour highlights the Docker or Azure preview in
+   the public demo, or the active Online or Offline environment badge in other
+   deployments.
+2. Confirm the knowledge boundary. The source notice identifies which content
+   the selected environment can search and keeps Online and Offline sources
+   separate.
+3. Search and review evidence. The tour points to document search, where you
+   can enter a question or keyword and inspect matching excerpts.
+4. Explore the workspace panels. The navigation provides Answers, Analytics,
+   Architecture, and Compliance views for evidence, usage, model and cost
+   details, and data-boundary responsibilities.
+5. Ask Mira. The assistant provides the available model selector, estimated
+   token cost, suggested prompts, and grounded question composer.
+
+Use **Next** to advance and **Back** to revisit a step. **Back** is unavailable
+on the first step. On the final step, **Finish** replaces **Next**. Select
+**Skip tour**, use the close button, or press Escape to leave the tour at any
+time. When the tour closes, keyboard focus returns to the **How to use**
+control.
+
+The tour highlights the visible version of each target and scrolls it into
+view. This behavior lets the same steps follow the desktop workspace or the
+responsive mobile layout without opening hidden controls.
+
+> [!NOTE]
+> The guided demo is read-only. It does not submit questions, switch
+> environments, move documents, or change stored data. It only explains and
+> highlights controls.
+
 ## Answers
 
 ![CSR Assist answer workspace](./images/overview.png)

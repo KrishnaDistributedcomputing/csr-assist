@@ -110,6 +110,12 @@ select:focus-visible {
 .environment-toggle button:disabled { cursor: not-allowed; opacity: .42; }
 .source-online .environment-toggle button.active { color: #174f73; }
 .mode-label-short { display: none; }
+.help-button {
+  display: flex; align-items: center; gap: 6px; padding: 7px 10px; color: white;
+  border: 1px solid rgba(255,255,255,.2); border-radius: 9px;
+  background: rgba(255,255,255,.1); font-size: 10px; font-weight: 800;
+}
+.help-button:hover { background: rgba(255,255,255,.18); }
 .icon-button {
   display: grid; place-items: center; padding: 8px; color: inherit; border: 0;
   border-radius: 10px; background: transparent;
@@ -172,6 +178,39 @@ select:focus-visible {
 }
 .operation-progress div { display: grid; gap: 2px; }
 .operation-progress span { color: var(--muted); font-size: 11px; }
+.tour-highlight {
+  position: relative; z-index: 25; border-radius: 12px;
+  outline: 4px solid #f4b942; outline-offset: 5px;
+  box-shadow: 0 0 0 9px rgba(244, 185, 66, .22), 0 16px 40px rgba(0, 0, 0, .2);
+  animation: tour-pulse 1.7s ease-in-out infinite;
+}
+.tour-dialog {
+  position: fixed; right: 24px; bottom: 24px; z-index: 50; width: min(390px, calc(100vw - 32px));
+  padding: 20px; color: var(--text); border: 1px solid var(--border); border-radius: 18px;
+  background: var(--surface); box-shadow: 0 24px 70px rgba(4, 25, 38, .3);
+}
+.tour-dialog:focus { outline: 0; }
+.tour-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.tour-heading > span {
+  color: var(--teal); font-size: 10px; font-weight: 800; letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.tour-heading button { display: grid; place-items: center; padding: 5px; color: var(--muted); border: 0; border-radius: 7px; background: transparent; }
+.tour-icon { display: grid; place-items: center; width: 42px; height: 42px; margin-top: 14px; color: white; border-radius: 13px; background: var(--teal); }
+.tour-dialog h2 { margin: 12px 0 6px; font-size: 19px; }
+.tour-dialog p { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.tour-progress { display: flex; gap: 5px; margin: 17px 0; }
+.tour-progress span { width: 24px; height: 4px; border-radius: 999px; background: var(--border); }
+.tour-progress span.active { background: var(--teal); }
+.tour-actions, .tour-actions > div { display: flex; align-items: center; gap: 8px; }
+.tour-actions { justify-content: space-between; }
+.tour-actions .primary, .tour-actions .secondary { padding: 8px 12px; font-size: 11px; }
+.tour-actions .secondary:disabled { cursor: not-allowed; opacity: .45; }
+.tour-skip { padding: 7px 0; color: var(--muted); border: 0; background: transparent; font-size: 10px; font-weight: 800; }
+@keyframes tour-pulse {
+  0%, 100% { outline-color: #f4b942; }
+  50% { outline-color: #ffd978; }
+}
 .usage-dashboard {
   margin-bottom: 22px; padding: 18px; border: 1px solid var(--border);
   border-radius: 16px; background: var(--surface);
@@ -538,6 +577,8 @@ select:focus-visible {
   .brand > div:last-child span { display: none; }
   .environment-preview > span { display: none; }
   .environment-toggle button { padding: 6px 7px; }
+  .help-button { width: 34px; height: 34px; justify-content: center; padding: 0; font-size: 0; }
+  .tour-dialog { right: 16px; bottom: 16px; }
   .desktop-assistant { display: none; }
   .local-pill { padding: 6px 8px; font-size: 11px; }
   .mode-label-full { display: none; }
