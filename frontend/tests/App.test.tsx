@@ -1,4 +1,11 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor
+} from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 import App from "../src/App";
 
@@ -83,6 +90,40 @@ test("workspace tabs support keyboard navigation", async () => {
   expect(
     await screen.findByLabelText("Data and accessibility compliance")
   ).toBeInTheDocument();
+});
+
+test("reports an actionable error when an API route returns HTML", async () => {
+  const currentFetch = vi.mocked(fetch);
+  currentFetch.mockImplementation(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes("/deployment")) {
+      return new Response("<!doctype html><title>CSR Assist</title>", {
+        status: 200,
+        headers: { "Content-Type": "text/html; charset=utf-8" }
+      });
+    }
+    const value = url.includes("/scan/status")
+      ? {
+          state: "idle",
+          id: "",
+          discovered: 0,
+          processed: 0,
+          unchanged: 0,
+          removed: 0,
+          errors: 0
+        }
+      : [];
+    return new Response(JSON.stringify(value), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+  });
+
+  render(<App />);
+
+  expect(await screen.findByRole("alert")).toHaveTextContent(
+    "API returned an unexpected response for /deployment"
+  );
 });
 
 test("shows document search progress while the request is pending", async () => {
@@ -178,7 +219,9 @@ test("switches document search to Azure AI online mode", async () => {
 
   render(<App />);
   const onlineButtons = await screen.findAllByRole("button", { name: /Online/ });
-  fireEvent.click(onlineButtons[onlineButtons.length - 1]);
+  const onlineButton = onlineButtons[onlineButtons.length - 1];
+  await waitFor(() => expect(onlineButton).not.toBeDisabled());
+  fireEvent.click(onlineButton);
   expect(document.querySelector("main")).toHaveClass("source-online");
   expect(
     screen.getAllByText(/Offline documents are isolated/i).length

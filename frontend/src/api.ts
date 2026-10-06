@@ -11,11 +11,17 @@ import type {
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const response = await fetch(`/api${path}`, options);
+  const contentType = response.headers.get("Content-Type") ?? "";
+  if (!contentType.toLowerCase().includes("application/json")) {
+    throw new Error(
+      `API returned an unexpected response for ${path}. Refresh the page or restart the application server.`
+    );
+  }
+  const body = await response.json() as T & { detail?: string };
   if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as { detail?: string };
     throw new Error(body.detail ?? `Request failed with status ${response.status}`);
   }
-  return response.json() as Promise<T>;
+  return body;
 }
 
 export const api = {
