@@ -6,11 +6,25 @@ ms.date: 2026-10-06
 ms.topic: how-to
 ---
 
-## Answer workspace
+## Navigate the workspace
+
+The primary navigation contains four sections:
+
+* **Answers** searches sources and previews exact excerpts.
+* **Analytics** reports request, latency, cache, token, and feedback metrics.
+* **Architecture** describes document processing and response flows.
+* **Compliance** shows the data boundary and customer responsibilities for the
+  selected Online or Offline mode.
+
+All four sections remain visible in a two-column grid on small screens. The
+header displays the active Online or Offline mode, and the **Ask Mira** button
+opens the mobile assistant.
+
+## Answers
 
 ![CSR Assist answer workspace](./images/overview.png)
 
-The answer workspace is the default page. It loads document and scan status
+Answers is the default section. It loads document and scan status
 before secondary model, history, and analytics data.
 
 1. Enter a phrase in **Search documents**.
@@ -48,6 +62,11 @@ blue. Labels and badges accompany the colors. Changing the selector never
 uploads or synchronizes Offline documents. Offline files are not searchable
 Online unless an administrator separately approves and indexes content in
 Azure AI Search. Azure-indexed sources are unavailable Offline.
+
+Offline mode displays local upload and scan controls plus the local document
+inventory. Online mode replaces them with a managed-index notice and shows
+only Azure AI Search results. This prevents local files from appearing as
+available Online sources.
 
 ## Ask Mira
 
