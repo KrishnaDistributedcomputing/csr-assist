@@ -40,6 +40,17 @@ export interface ModelRecord {
   installed: boolean;
   available: boolean;
   active: boolean;
+  input_cost_per_million: number | null;
+  output_cost_per_million: number | null;
+  pricing_note: string;
+}
+
+export interface AzureServiceRecord {
+  name: string;
+  resource: string;
+  region: string;
+  sku: string;
+  billing_basis: string;
 }
 
 export interface ChatResponse {
@@ -74,6 +85,9 @@ export interface DeploymentInfo {
   online_available: boolean;
   online_model: string;
   online_models: ModelRecord[];
+  azure_region: string;
+  azure_services: AzureServiceRecord[];
+  token_pricing_as_of: string;
 }
 
 export interface HistoryEntry {

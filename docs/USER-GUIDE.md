@@ -124,6 +124,46 @@ you review prompts and answers.
 The optional local model selector controls generated Offline answers. Models
 marked **Setup required** are approved but not installed.
 
+### Review the selected-model cost
+
+The model selector includes a cost summary for the current choice:
+
+* **Fast local index (no LLM)** reports no LLM token charge.
+* A selected Docker model reports a $0 provider-token charge.
+* A selected Online model reports its estimated request cost and its input and
+  output rates in USD per 1 million tokens.
+
+The estimate assumes 2,000 input tokens and 120 output tokens. For the current
+Azure AI Foundry **Phi-4-mini** deployment, the planning rates as of 2026-10-06
+are $0.075 per 1 million input tokens and $0.300 per 1 million output tokens:
+
+```text
+((2,000 input tokens x $0.075) + (120 output tokens x $0.300)) / 1,000,000
+= approximately $0.000186 per request
+```
+
+The **Architecture** tab provides the full Online and Offline LLM token cost
+matrix. It also identifies the current **West US 2** Azure resources and their
+billing basis:
+
+| Service | Resource | SKU and billing |
+|---|---|---|
+| Azure Container Apps | `ca-csr-assist-demo` | Consumption; billed for vCPU, memory, and requests |
+| Azure AI Search | `srch-csr-assist-kvenk26` | Free SKU; billed by provisioned capacity, not tokens |
+| Azure AI Foundry | `aif-csr-assist-kvenk26` | AIServices S0; model input and output token billing |
+
+The Docker $0 amount covers provider tokens only. It excludes hardware,
+electricity, hosting, support, and operations. Container Apps and Azure AI
+Search charges are also separate from the Foundry token estimate.
+
+> [!IMPORTANT]
+> Rates and request costs are estimates, not invoices or guarantees. Actual
+> charges may vary by currency, contract, region, taxes, discounts, model
+> version, and usage. Verify the deployment and current rates in the
+> [Azure pricing calculator](https://azure.microsoft.com/pricing/calculator/).
+> This cost information does not certify compliance and does not provide legal
+> advice.
+
 Mira does not use external knowledge or speculate beyond retrieved excerpts.
 When the documents do not support an answer, Mira responds:
 

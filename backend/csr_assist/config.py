@@ -58,6 +58,13 @@ class Settings(BaseSettings):
     azure_ai_foundry_deployments: str = ""
     azure_ai_identity_client_id: str = ""
     azure_ai_timeout: int = Field(default=60, ge=5, le=180)
+    azure_region: str = ""
+    azure_container_app_service: str = ""
+    azure_container_app_sku: str = "Consumption"
+    azure_ai_search_service: str = ""
+    azure_ai_search_sku: str = ""
+    azure_ai_foundry_service: str = ""
+    azure_ai_foundry_sku: str = ""
 
     def ensure_directories(self) -> None:
         """Create required writable data directories."""

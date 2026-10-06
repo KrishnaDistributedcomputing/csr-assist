@@ -150,6 +150,13 @@ def test_online_search_and_foundry_answer(
             "azure_ai_foundry_endpoint": "https://foundry.example",
             "azure_ai_foundry_deployment": "phi-4-mini",
             "azure_ai_foundry_deployments": "gpt-4o-mini",
+            "azure_region": "West US 2",
+            "azure_container_app_service": "ca-csr-assist-demo",
+            "azure_container_app_sku": "Consumption",
+            "azure_ai_search_service": "srch-csr-assist-kvenk26",
+            "azure_ai_search_sku": "Free",
+            "azure_ai_foundry_service": "aif-csr-assist-kvenk26",
+            "azure_ai_foundry_sku": "S0",
         }
     )
     app = create_app(settings=online_settings)
@@ -182,6 +189,7 @@ def test_online_search_and_foundry_answer(
     app.state.azure_ai.search = online_search
     app.state.azure_ai.generate = online_generate
     with TestClient(app) as online_client:
+        deployment = online_client.get("/api/deployment").json()
         search = online_client.get(
             "/api/search",
             params={"q": "Cogsdale utility billing", "source": "online"},
@@ -196,6 +204,16 @@ def test_online_search_and_foundry_answer(
         ).json()
 
     assert search["source"] == "online"
+    assert deployment["azure_region"] == "West US 2"
+    assert deployment["online_models"][0]["input_cost_per_million"] == 0.075
+    assert deployment["online_models"][0]["output_cost_per_million"] == 0.3
+    assert deployment["azure_services"][1] == {
+        "name": "Azure AI Search",
+        "resource": "srch-csr-assist-kvenk26",
+        "region": "West US 2",
+        "sku": "Free",
+        "billing_basis": "Provisioned search capacity; not token-priced",
+    }
     assert search["results"][0]["channel"] == "online"
     assert answer["state"] == "answered"
     assert answer["model"] == "azure-foundry:gpt-4o-mini"
@@ -497,6 +515,9 @@ def test_read_only_demo_does_not_persist_user_activity(
             "online_available": False,
             "online_model": "",
             "online_models": [],
+            "azure_region": "",
+            "azure_services": [],
+            "token_pricing_as_of": "2026-10-06",
         }
         answer = demo_client.post(
             "/api/chat", json={"message": "What do returns require?"}

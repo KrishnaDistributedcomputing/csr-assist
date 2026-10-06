@@ -55,6 +55,25 @@ UNSUPPORTED_ANSWER = (
     "I’m unable to answer this question because it falls outside the scope of "
     "the provided documents or is not supported by their content."
 )
+TOKEN_PRICING_AS_OF = "2026-10-06"
+AZURE_MODEL_TOKEN_PRICING = {
+    "phi-4-mini": {
+        "input_cost_per_million": 0.075,
+        "output_cost_per_million": 0.3,
+        "pricing_note": (
+            "Estimated GlobalStandard provider-token rate. Verify current "
+            "Azure pricing and contract discounts."
+        ),
+    },
+}
+LOCAL_TOKEN_PRICING = {
+    "input_cost_per_million": 0.0,
+    "output_cost_per_million": 0.0,
+    "pricing_note": (
+        "No provider token charge. Customer hardware, electricity, hosting, "
+        "support, and operations are excluded."
+    ),
+}
 
 
 def evidence_excerpt(text: str, query: str) -> str:
@@ -408,9 +427,45 @@ def create_app(
                 "installed": True,
                 "available": True,
                 "active": deployment_id == azure_ai.foundry_deployment,
+                **AZURE_MODEL_TOKEN_PRICING.get(
+                    deployment_id,
+                    {
+                        "input_cost_per_million": None,
+                        "output_cost_per_million": None,
+                        "pricing_note": (
+                            "No reference rate is configured. Verify the "
+                            "Azure pricing calculator."
+                        ),
+                    },
+                ),
             }
             for deployment_id in azure_ai.foundry_deployments
         ]
+        azure_services = []
+        if azure_ai.configured:
+            azure_services = [
+                {
+                    "name": "Azure Container Apps",
+                    "resource": runtime.azure_container_app_service,
+                    "region": runtime.azure_region,
+                    "sku": runtime.azure_container_app_sku,
+                    "billing_basis": "vCPU, memory, and requests; not token-priced",
+                },
+                {
+                    "name": "Azure AI Search",
+                    "resource": runtime.azure_ai_search_service,
+                    "region": runtime.azure_region,
+                    "sku": runtime.azure_ai_search_sku,
+                    "billing_basis": "Provisioned search capacity; not token-priced",
+                },
+                {
+                    "name": "Azure AI Foundry",
+                    "resource": runtime.azure_ai_foundry_service,
+                    "region": runtime.azure_region,
+                    "sku": runtime.azure_ai_foundry_sku,
+                    "billing_basis": "Model input and output tokens",
+                },
+            ]
         return {
             "read_only_demo": runtime.read_only_demo,
             "online_available": azure_ai.configured,
@@ -418,6 +473,9 @@ def create_app(
                 azure_ai.foundry_deployment if azure_ai.configured else ""
             ),
             "online_models": online_models if azure_ai.configured else [],
+            "azure_region": runtime.azure_region if azure_ai.configured else "",
+            "azure_services": azure_services,
+            "token_pricing_as_of": TOKEN_PRICING_AS_OF,
         }
 
     def require_demo_mutation_access() -> None:
@@ -547,6 +605,7 @@ def create_app(
                 "installed": model["id"] in installed,
                 "available": model["id"] in installed,
                 "active": model["id"] == saved["active_model"],
+                **LOCAL_TOKEN_PRICING,
             }
             for model in saved["allowed_models"]
         ]

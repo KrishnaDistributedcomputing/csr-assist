@@ -67,6 +67,8 @@ const onlineChatProgressMessages = [
   "Requesting Azure AI Foundry",
   "Preparing a cited response"
 ];
+const ESTIMATED_INPUT_TOKENS = 2000;
+const ESTIMATED_OUTPUT_TOKENS = 120;
 const AnalyticsPanel = lazy(() => import("./AnalyticsPanel"));
 const ArchitecturePanel = lazy(() => import("./ArchitecturePanel"));
 const CompliancePanel = lazy(() => import("./CompliancePanel"));
@@ -96,7 +98,10 @@ export default function App() {
     read_only_demo: false,
     online_available: false,
     online_model: "",
-    online_models: []
+    online_models: [],
+    azure_region: "",
+    azure_services: [],
+    token_pricing_as_of: ""
   });
   const [dataSource, setDataSource] = useState<"offline" | "online">("offline");
   const [models, setModels] = useState<ModelRecord[]>([]);
@@ -138,13 +143,34 @@ export default function App() {
       : "Offline mode searches only the local document index. Azure-hosted sources are not available in this mode.";
   const visiblePrompts =
     promptView === "suggested" ? suggestedPrompts : allPrompts;
+  const selectedModelId =
+    dataSource === "online" ? selectedOnlineModel : selectedOfflineModel;
+  const selectedModelDetails = (
+    dataSource === "online" ? deployment.online_models : models
+  ).find((model) => model.id === selectedModelId);
+  const estimatedProviderCost =
+    selectedModelDetails?.input_cost_per_million != null
+    && selectedModelDetails.output_cost_per_million != null
+      ? (
+          ESTIMATED_INPUT_TOKENS
+          * selectedModelDetails.input_cost_per_million
+          + ESTIMATED_OUTPUT_TOKENS
+          * selectedModelDetails.output_cost_per_million
+        ) / 1_000_000
+      : null;
 
   async function refresh() {
     try {
       await Promise.all([
         api.deployment().then((nextDeployment) => {
           const onlineModels = nextDeployment.online_models ?? [];
-          setDeployment({ ...nextDeployment, online_models: onlineModels });
+          setDeployment({
+            ...nextDeployment,
+            online_models: onlineModels,
+            azure_region: nextDeployment.azure_region ?? "",
+            azure_services: nextDeployment.azure_services ?? [],
+            token_pricing_as_of: nextDeployment.token_pricing_as_of ?? ""
+          });
           setSelectedOnlineModel((current) =>
             onlineModels.some((model) => model.id === current)
               ? current
@@ -457,6 +483,28 @@ export default function App() {
                 ? "Answers use the selected model installed in Docker."
                 : "Answers use fast extractive retrieval without an LLM."}
           </small>
+          <div className="token-cost-summary" aria-label="Selected model token cost">
+            <strong>
+              {selectedModelDetails
+                ? dataSource === "offline"
+                  ? "$0 provider token charge"
+                  : estimatedProviderCost == null
+                    ? "Token price not configured"
+                    : `$${estimatedProviderCost.toFixed(6)} estimated per request`
+                : "No LLM token charge"}
+            </strong>
+            <span>
+              {selectedModelDetails
+                ? selectedModelDetails.input_cost_per_million == null
+                  || selectedModelDetails.output_cost_per_million == null
+                  ? selectedModelDetails.pricing_note
+                  : `$${selectedModelDetails.input_cost_per_million.toFixed(3)} input / `
+                    + `$${selectedModelDetails.output_cost_per_million.toFixed(3)} output per 1M tokens. `
+                    + `Estimate assumes ${ESTIMATED_INPUT_TOKENS.toLocaleString()} input and `
+                    + `${ESTIMATED_OUTPUT_TOKENS} output tokens.`
+                : "Fast local retrieval does not invoke an LLM."}
+            </span>
+          </div>
         </div>
       </div>
       <div className="assistant-tabs" role="tablist" aria-label="Mira panels">
@@ -1058,7 +1106,10 @@ export default function App() {
               aria-labelledby="workspace-tab-architecture"
             >
               <Suspense fallback={<PanelLoading label="Loading architecture" />}>
-                <ArchitecturePanel />
+                <ArchitecturePanel
+                  deployment={deployment}
+                  localModels={models}
+                />
               </Suspense>
             </div>
           )}

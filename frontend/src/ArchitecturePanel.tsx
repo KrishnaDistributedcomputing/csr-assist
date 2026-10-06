@@ -13,6 +13,33 @@ import {
   Server,
   ShieldCheck,
 } from "lucide-react";
+import type { DeploymentInfo, ModelRecord } from "./types";
+
+const ESTIMATED_INPUT_TOKENS = 2000;
+const ESTIMATED_OUTPUT_TOKENS = 120;
+
+interface ArchitecturePanelProps {
+  deployment: DeploymentInfo;
+  localModels: ModelRecord[];
+}
+
+function formatRate(rate: number | null) {
+  return rate == null ? "Not configured" : `$${rate.toFixed(3)}`;
+}
+
+function estimatedRequestCost(model: ModelRecord) {
+  if (
+    model.input_cost_per_million == null
+    || model.output_cost_per_million == null
+  ) {
+    return "Not configured";
+  }
+  const cost = (
+    ESTIMATED_INPUT_TOKENS * model.input_cost_per_million
+    + ESTIMATED_OUTPUT_TOKENS * model.output_cost_per_million
+  ) / 1_000_000;
+  return cost === 0 ? "$0 provider tokens" : `$${cost.toFixed(6)}`;
+}
 
 const layers = [
   {
@@ -91,7 +118,23 @@ const configuration = [
   ["CSR_AZURE_AI_FOUNDRY_DEPLOYMENTS", "Additional comma-separated deployments", "Optional"],
 ];
 
-export default function ArchitecturePanel() {
+export default function ArchitecturePanel({
+  deployment,
+  localModels,
+}: ArchitecturePanelProps) {
+  const modelMatrix = [
+    ...localModels.map((model) => ({
+      environment: "Docker on-premises",
+      model,
+      status: model.available ? "Installed" : "Setup required",
+    })),
+    ...deployment.online_models.map((model) => ({
+      environment: "Azure cloud",
+      model,
+      status: "Configured deployment",
+    })),
+  ];
+
   return (
     <section className="architecture-panel" aria-label="System architecture">
       <div className="architecture-hero">
@@ -162,6 +205,105 @@ export default function ArchitecturePanel() {
           );
         })}
       </div>
+
+      <section className="architecture-technical-section">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Cost transparency</p>
+            <h3>LLM token cost matrix</h3>
+          </div>
+          <Cpu size={22} />
+        </div>
+        <p className="architecture-assumption">
+          Estimated request cost assumes {ESTIMATED_INPUT_TOKENS.toLocaleString()} input
+          tokens and {ESTIMATED_OUTPUT_TOKENS} output tokens. Rates are USD per one
+          million tokens as of {deployment.token_pricing_as_of || "the configured pricing date"}.
+          Estimates exclude Azure AI Search, Container Apps, networking, taxes,
+          discounts, local hardware, electricity, support, and operations.
+        </p>
+        <div className="architecture-table-wrap">
+          <table className="architecture-table cost-matrix" aria-label="LLM token cost matrix">
+            <thead>
+              <tr>
+                <th scope="col">Environment</th>
+                <th scope="col">Provider and model</th>
+                <th scope="col">Status</th>
+                <th scope="col">Input / 1M</th>
+                <th scope="col">Output / 1M</th>
+                <th scope="col">Estimated request</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Docker on-premises</th>
+                <td>Local index · Fast retrieval (no LLM)</td>
+                <td>Available</td>
+                <td>Not applicable</td>
+                <td>Not applicable</td>
+                <td>$0 provider tokens</td>
+              </tr>
+              {modelMatrix.map(({ environment, model, status }) => (
+                <tr key={`${environment}-${model.id}`}>
+                  <th scope="row">{environment}</th>
+                  <td>
+                    <strong>{model.provider} · {model.name}</strong>
+                    <small>{model.pricing_note}</small>
+                  </td>
+                  <td>{status}</td>
+                  <td>{formatRate(model.input_cost_per_million)}</td>
+                  <td>{formatRate(model.output_cost_per_million)}</td>
+                  <td>{estimatedRequestCost(model)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p className="architecture-price-source">
+          Azure rates are planning estimates. Verify the deployment, region,
+          currency, agreement, and current price in the{" "}
+          <a
+            href="https://azure.microsoft.com/pricing/calculator/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Azure pricing calculator
+          </a>.
+        </p>
+      </section>
+
+      <section className="architecture-technical-section">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Azure inventory</p>
+            <h3>Region and services</h3>
+          </div>
+          <Cloud size={22} />
+        </div>
+        <p className="architecture-assumption">
+          Current public deployment region: <strong>{deployment.azure_region || "Not configured"}</strong>.
+          Only Foundry inference is token-priced; the other services use their
+          own capacity or consumption meters.
+        </p>
+        <div className="azure-service-grid">
+          {deployment.azure_services.map((service) => (
+            <article key={service.name}>
+              <strong>{service.name}</strong>
+              <span>{service.resource || "Resource name not configured"}</span>
+              <dl>
+                <div><dt>Region</dt><dd>{service.region || "Not configured"}</dd></div>
+                <div><dt>SKU</dt><dd>{service.sku || "Not configured"}</dd></div>
+                <div><dt>Billing</dt><dd>{service.billing_basis}</dd></div>
+              </dl>
+            </article>
+          ))}
+          {deployment.azure_services.length === 0 && (
+            <article>
+              <strong>Azure services are not configured</strong>
+              <span>Switch to a configured Azure deployment to view inventory.</span>
+            </article>
+          )}
+        </div>
+      </section>
 
       <section className="architecture-technical-section">
         <div className="section-heading">

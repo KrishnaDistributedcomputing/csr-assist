@@ -196,6 +196,57 @@ The request body currently labels Online chat as `mode: "fast"`, but Online
 requests always follow the Azure Search and Foundry orchestration path. The mode
 value participates in cache and usage namespacing; it does not bypass Foundry.
 
+## Cost transparency
+
+The Architecture tab displays an Online and Offline LLM token cost matrix. The
+matrix uses a planning assumption of 2,000 input tokens and 120 output tokens
+per request. Rates are shown in USD per 1 million tokens.
+
+| Environment | Provider and model | Input per 1M tokens | Output per 1M tokens | Estimated request |
+|---|---|---:|---:|---:|
+| Docker on-premises | Fast local retrieval, no LLM | Not applicable | Not applicable | $0 provider tokens |
+| Docker on-premises | Approved local Ollama models | $0.000 | $0.000 | $0 provider tokens |
+| Azure cloud | Azure AI Foundry Phi-4-mini | $0.075 | $0.300 | Approximately $0.000186 |
+
+The Phi-4-mini planning rates are current as of 2026-10-06. The request
+estimate uses this formula:
+
+```text
+((2,000 input tokens x $0.075) + (120 output tokens x $0.300)) / 1,000,000
+= ($150 + $36) / 1,000,000
+= $0.000186
+```
+
+The Mira model selector also shows a selected-model cost summary. For an
+Online model with configured rates, it displays the estimated request cost,
+the input and output rates, and the 2,000-input-token and 120-output-token
+assumption. For a selected Docker model, it displays a $0 provider-token
+charge. Fast local retrieval displays no LLM token charge.
+
+The Docker amount covers provider-token charges only. It explicitly excludes
+hardware, electricity, hosting, support, and operations.
+
+> [!IMPORTANT]
+> Rates and calculated request costs are estimates, not invoices or
+> guarantees. Actual charges can vary by currency, contract, region, taxes,
+> discounts, model version, and usage. Verify the deployment and current rates
+> in the [Azure pricing calculator](https://azure.microsoft.com/pricing/calculator/)
+> before making purchasing or operational decisions.
+
+### Azure service billing inventory
+
+The current public deployment is in **West US 2** and reports this inventory:
+
+| Azure service | Resource | SKU | Billing basis |
+|---|---|---|---|
+| Azure Container Apps | `ca-csr-assist-demo` | Consumption | vCPU, memory, and requests; not token-priced |
+| Azure AI Search | `srch-csr-assist-kvenk26` | Free | Provisioned search capacity; not token-priced |
+| Azure AI Foundry | `aif-csr-assist-kvenk26` | AIServices S0 | Foundry model input and output tokens |
+
+The LLM matrix estimates only model provider-token charges. Azure Container
+Apps Consumption billing and Azure AI Search capacity billing are separate
+from Foundry token billing and are not included in the per-request estimate.
+
 ## Retrieval and grounding lifecycle
 
 ### Offline ingestion and indexing

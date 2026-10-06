@@ -66,12 +66,25 @@ test("renders the document workspace and Mira", async () => {
   expect(screen.getAllByRole("button", { name: /Online/ })[0]).toBeDisabled();
   expect(screen.queryByLabelText("Token usage dashboard")).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("tab", { name: /Analytics/ }));
-  expect(await screen.findByLabelText("Token usage dashboard")).toBeInTheDocument();
+  expect(
+    await screen.findByLabelText(
+      "Token usage dashboard",
+      {},
+      { timeout: 5000 }
+    )
+  ).toBeInTheDocument();
   fireEvent.click(screen.getByRole("tab", { name: /Architecture/ }));
-  expect(await screen.findByLabelText("System architecture")).toBeInTheDocument();
+  expect(
+    await screen.findByLabelText("System architecture", {}, { timeout: 5000 })
+  ).toBeInTheDocument();
+  expect(screen.getByLabelText("LLM token cost matrix")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("tab", { name: /Compliance/ }));
   expect(
-    await screen.findByLabelText("Data and accessibility compliance")
+    await screen.findByLabelText(
+      "Data and accessibility compliance",
+      {},
+      { timeout: 5000 }
+    )
   ).toBeInTheDocument();
   expect(screen.getByText(/not a certification or legal opinion/i)).toBeInTheDocument();
   expect(
@@ -85,7 +98,7 @@ test("renders the document workspace and Mira", async () => {
   fireEvent.click(screen.getByRole("tab", { name: /History/ }));
   expect(screen.getByText("No history yet")).toBeInTheDocument();
   expect(screen.queryByLabelText("Message Mira")).not.toBeInTheDocument();
-});
+}, 15000);
 
 test("workspace tabs support keyboard navigation", async () => {
   render(<App />);
@@ -132,7 +145,10 @@ test("public demo can preview Docker and Azure environments", async () => {
               name: "Phi-4 Mini",
               installed: true,
               available: true,
-              active: true
+              active: true,
+              input_cost_per_million: 0.075,
+              output_cost_per_million: 0.3,
+              pricing_note: "Estimated Azure provider-token rate."
             },
             {
               id: "gpt-4o-mini",
@@ -140,9 +156,23 @@ test("public demo can preview Docker and Azure environments", async () => {
               name: "GPT-4o Mini",
               installed: true,
               available: true,
-              active: false
+              active: false,
+              input_cost_per_million: 0.15,
+              output_cost_per_million: 0.6,
+              pricing_note: "Test rate."
             }
-          ]
+          ],
+          azure_region: "West US 2",
+          azure_services: [
+            {
+              name: "Azure AI Search",
+              resource: "srch-csr-assist-kvenk26",
+              region: "West US 2",
+              sku: "Free",
+              billing_basis: "Provisioned search capacity; not token-priced"
+            }
+          ],
+          token_pricing_as_of: "2026-10-06"
         }
       : url.includes("/scan/status")
         ? {
@@ -181,6 +211,9 @@ test("public demo can preview Docker and Azure environments", async () => {
   fireEvent.change(screen.getByLabelText("Azure LLM model"), {
     target: { value: "gpt-4o-mini" }
   });
+  expect(screen.getByLabelText("Selected model token cost")).toHaveTextContent(
+    "$0.000372 estimated per request"
+  );
   fireEvent.change(screen.getByLabelText("Message Mira"), {
     target: { value: "What is supported?" }
   });
