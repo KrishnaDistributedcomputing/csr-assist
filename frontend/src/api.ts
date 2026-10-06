@@ -34,11 +34,20 @@ export const api = {
     request<SearchResponse>(
       `/search?q=${encodeURIComponent(query)}&source=${source}`
     ),
-  chat: (message: string, source: "offline" | "online") =>
+  chat: (
+    message: string,
+    source: "offline" | "online",
+    model?: string
+  ) =>
     request<ChatResponse>("/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message, source })
+      body: JSON.stringify({
+        message,
+        source,
+        mode: source === "offline" && model ? "generated" : "fast",
+        ...(model ? { model } : {})
+      })
     }),
   history: () => request<HistoryEntry[]>("/history"),
   usage: () => request<UsageDashboard>("/usage"),

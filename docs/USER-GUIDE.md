@@ -46,7 +46,26 @@ chat history, accept feedback, or allow model or settings changes. Its runtime
 documents, indexes, configuration, and model directories are ephemeral. A
 scale-from-zero cold start can delay the first request after an idle period.
 
-Use the source selector to choose a processing boundary:
+Use the public-demo controls to preview each environment:
+
+1. In **Environment preview**, select **Docker** for the on-premises path or
+   **Azure** for the cloud path.
+2. Open **Ask Mira** and find the environment-aware model list. It is labelled
+   **Docker LLM model** or **Azure LLM model** based on your preview.
+3. Select an available model, or use **Fast local index (no LLM)** in the
+   Docker preview, then ask your question.
+
+The Docker model list contains the approved Ollama models. Only models already
+installed in Docker are enabled; approved models that are not installed appear
+as **Setup required** and cannot be selected. **Fast local index (no LLM)**
+returns a cited extractive answer without calling an LLM.
+
+The Azure model list contains only Foundry deployments configured and
+allowlisted by the server. The current public Azure deployment exposes
+**Phi-4-mini** only. Access to **GPT-4o-mini** was denied for this subscription,
+so the interface does not present it as a broken option.
+
+The environment preview also chooses the processing boundary:
 
 * **Offline** searches the bundled local index and returns cited extracted
   content.

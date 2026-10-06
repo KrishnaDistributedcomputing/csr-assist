@@ -394,12 +394,30 @@ def create_app(
 
     @app.get("/api/deployment")
     async def deployment() -> dict[str, Any]:
+        online_models = [
+            {
+                "id": deployment_id,
+                "provider": "Azure AI Foundry",
+                "name": (
+                    "Phi-4 Mini"
+                    if deployment_id == "phi-4-mini"
+                    else "GPT-4o Mini"
+                    if deployment_id == "gpt-4o-mini"
+                    else deployment_id
+                ),
+                "installed": True,
+                "available": True,
+                "active": deployment_id == azure_ai.foundry_deployment,
+            }
+            for deployment_id in azure_ai.foundry_deployments
+        ]
         return {
             "read_only_demo": runtime.read_only_demo,
             "online_available": azure_ai.configured,
             "online_model": (
                 azure_ai.foundry_deployment if azure_ai.configured else ""
             ),
+            "online_models": online_models if azure_ai.configured else [],
         }
 
     def require_demo_mutation_access() -> None:
@@ -564,10 +582,32 @@ def create_app(
         nonlocal answer_waiters
         started = time.perf_counter()
         saved = config.read()
-        model = saved["active_model"]
+        if request.source == "online":
+            if not azure_ai.configured:
+                raise HTTPException(
+                    status_code=503,
+                    detail="Azure AI online mode is not configured",
+                )
+            model = request.model or azure_ai.foundry_deployment
+            if model not in azure_ai.foundry_deployments:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Azure AI Foundry model is not approved",
+                )
+        else:
+            model = request.model or saved["active_model"]
+            approved_models = {
+                configured_model["id"]
+                for configured_model in saved["allowed_models"]
+            }
+            if model not in approved_models:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Local model is not approved",
+                )
         cache_mode = f"{request.source}:{request.mode}"
         cache_model = (
-            f"azure-foundry:{azure_ai.foundry_deployment}"
+            f"azure-foundry:{model}"
             if request.source == "online"
             else "local-index"
             if request.mode == "fast"
@@ -694,7 +734,7 @@ def create_app(
                 request.message,
             )
             try:
-                generation = await azure_ai.generate(prompt)
+                generation = await azure_ai.generate(prompt, model)
             except (httpx.HTTPError, RuntimeError) as exc:
                 logger.warning(
                     "Azure AI Foundry generation failed; using cited extractive "

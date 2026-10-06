@@ -69,6 +69,7 @@ async def test_search_and_foundry_use_managed_identity(
             azure_ai_search_index="documents",
             azure_ai_foundry_endpoint="https://foundry.example",
             azure_ai_foundry_deployment="phi-4-mini",
+            azure_ai_foundry_deployments="gpt-4o-mini",
             azure_ai_identity_client_id="client-id",
             azure_ai_timeout=120,
         ),
@@ -77,11 +78,17 @@ async def test_search_and_foundry_use_managed_identity(
 
     sources = await client.search("Cogsdale billing", 3)
     generation = await client.generate("Use only [1].")
+    alternate_generation = await client.generate(
+        "Use only [1].",
+        "gpt-4o-mini",
+    )
 
     assert sources[0]["channel"] == "online"
     assert sources[0]["source_url"] == "https://cogsdale.com/"
     assert generation.text.endswith("[1]")
     assert generation.prompt_tokens == 12
+    assert alternate_generation.text.endswith("[1]")
+    assert client.foundry_deployments == ("phi-4-mini", "gpt-4o-mini")
     assert client.foundry_timeout == 10
     assert requests[0].url.params["client_id"] == "client-id"
     assert requests[1].url.params["api-version"] == "2024-07-01"
@@ -91,3 +98,8 @@ async def test_search_and_foundry_use_managed_identity(
     )
     assert requests[3].url.params["api-version"] == "2024-10-21"
     assert timeouts[3] == 10
+    assert requests[4].url.path.endswith(
+        "/openai/deployments/gpt-4o-mini/chat/completions"
+    )
+    with pytest.raises(ValueError, match="not approved"):
+        await client.generate("Use only [1].", "unapproved-model")

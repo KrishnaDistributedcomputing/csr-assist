@@ -29,7 +29,13 @@ export interface SearchResponse {
 
 export interface ModelRecord {
   id: string;
-  provider: "Microsoft" | "Meta" | "Alibaba" | "Google" | "Hugging Face";
+  provider:
+    | "Microsoft"
+    | "Meta"
+    | "Alibaba"
+    | "Google"
+    | "Hugging Face"
+    | "Azure AI Foundry";
   name: string;
   installed: boolean;
   available: boolean;
@@ -67,6 +73,7 @@ export interface DeploymentInfo {
   read_only_demo: boolean;
   online_available: boolean;
   online_model: string;
+  online_models: ModelRecord[];
 }
 
 export interface HistoryEntry {

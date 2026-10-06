@@ -100,6 +100,100 @@ test("workspace tabs support keyboard navigation", async () => {
   ).toBeInTheDocument();
 });
 
+test("public demo can preview Docker and Azure environments", async () => {
+  const currentFetch = vi.mocked(fetch);
+  let chatRequest: Record<string, string> | undefined;
+  currentFetch.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+    const url = String(input);
+    if (url.includes("/chat")) {
+      chatRequest = JSON.parse(String(init?.body)) as Record<string, string>;
+      return new Response(JSON.stringify({
+        state: "answered",
+        text: "Grounded answer [1]",
+        model: "azure-foundry:gpt-4o-mini",
+        citations: [],
+        sources: [],
+        cached: false,
+        history_id: 0
+      }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+    const value = url.includes("/deployment")
+      ? {
+          read_only_demo: true,
+          online_available: true,
+          online_model: "phi-4-mini",
+          online_models: [
+            {
+              id: "phi-4-mini",
+              provider: "Azure AI Foundry",
+              name: "Phi-4 Mini",
+              installed: true,
+              available: true,
+              active: true
+            },
+            {
+              id: "gpt-4o-mini",
+              provider: "Azure AI Foundry",
+              name: "GPT-4o Mini",
+              installed: true,
+              available: true,
+              active: false
+            }
+          ]
+        }
+      : url.includes("/scan/status")
+        ? {
+            state: "idle",
+            id: "",
+            discovered: 0,
+            processed: 0,
+            unchanged: 0,
+            removed: 0,
+            errors: 0
+          }
+        : [];
+    return new Response(JSON.stringify(value), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+  });
+
+  render(<App />);
+
+  const docker = await screen.findByRole("button", {
+    name: "Docker on-premises"
+  });
+  const azure = screen.getByRole("button", { name: "Azure cloud" });
+  expect(docker).toHaveAttribute("aria-pressed", "true");
+  expect(azure).toHaveAttribute("aria-pressed", "false");
+
+  fireEvent.click(azure);
+
+  expect(azure).toHaveAttribute("aria-pressed", "true");
+  expect(docker).toHaveAttribute("aria-pressed", "false");
+  expect(screen.getByText("Online search")).toBeInTheDocument();
+  expect(
+    screen.getAllByText(/approved Azure-indexed sources/i).length
+  ).toBeGreaterThan(0);
+  fireEvent.change(screen.getByLabelText("Azure LLM model"), {
+    target: { value: "gpt-4o-mini" }
+  });
+  fireEvent.change(screen.getByLabelText("Message Mira"), {
+    target: { value: "What is supported?" }
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+  await waitFor(() => {
+    expect(chatRequest).toMatchObject({
+      source: "online",
+      model: "gpt-4o-mini"
+    });
+  });
+});
+
 test("reports an actionable error when an API route returns HTML", async () => {
   const currentFetch = vi.mocked(fetch);
   currentFetch.mockImplementation(async (input: RequestInfo | URL) => {

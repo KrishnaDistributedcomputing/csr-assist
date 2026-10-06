@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     azure_ai_search_index: str = "csr-assist-documents"
     azure_ai_foundry_endpoint: str = ""
     azure_ai_foundry_deployment: str = ""
+    azure_ai_foundry_deployments: str = ""
     azure_ai_identity_client_id: str = ""
     azure_ai_timeout: int = Field(default=60, ge=5, le=180)
 

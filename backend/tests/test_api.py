@@ -149,6 +149,7 @@ def test_online_search_and_foundry_answer(
             "azure_ai_search_index": "documents",
             "azure_ai_foundry_endpoint": "https://foundry.example",
             "azure_ai_foundry_deployment": "phi-4-mini",
+            "azure_ai_foundry_deployments": "gpt-4o-mini",
         }
     )
     app = create_app(settings=online_settings)
@@ -168,7 +169,10 @@ def test_online_search_and_foundry_answer(
     async def online_search(_: str, __: int) -> list[dict[str, object]]:
         return [source]
 
-    async def online_generate(_: str) -> GenerationResult:
+    selected_models: list[str] = []
+
+    async def online_generate(_: str, model: str) -> GenerationResult:
+        selected_models.append(model)
         return GenerationResult(
             text="Cogsdale CSM supports utility billing services. [1]",
             prompt_tokens=30,
@@ -187,13 +191,15 @@ def test_online_search_and_foundry_answer(
             json={
                 "message": "What utility billing services does Cogsdale support?",
                 "source": "online",
+                "model": "gpt-4o-mini",
             },
         ).json()
 
     assert search["source"] == "online"
     assert search["results"][0]["channel"] == "online"
     assert answer["state"] == "answered"
-    assert answer["model"] == "azure-foundry:phi-4-mini"
+    assert answer["model"] == "azure-foundry:gpt-4o-mini"
+    assert selected_models == ["gpt-4o-mini"]
     assert answer["citations"][0]["name"] == "PUBLIC-cogsdale-overview.md"
 
 
@@ -225,7 +231,7 @@ def test_online_chat_uses_extractive_fallback_when_foundry_is_limited(
     async def online_search(_: str, __: int) -> list[dict[str, object]]:
         return [source]
 
-    async def limited_generation(_: str) -> GenerationResult:
+    async def limited_generation(_: str, __: str) -> GenerationResult:
         raise httpx.HTTPStatusError(
             "rate limited",
             request=httpx.Request("POST", "https://foundry.example"),
@@ -274,7 +280,7 @@ def test_online_chat_uses_extractive_fallback_for_grounded_model_refusal(
     async def online_search(_: str, __: int) -> list[dict[str, object]]:
         return [source]
 
-    async def model_refusal(_: str) -> GenerationResult:
+    async def model_refusal(_: str, __: str) -> GenerationResult:
         return GenerationResult(
             text=UNSUPPORTED_ANSWER,
             prompt_tokens=30,
@@ -490,6 +496,7 @@ def test_read_only_demo_does_not_persist_user_activity(
             "read_only_demo": True,
             "online_available": False,
             "online_model": "",
+            "online_models": [],
         }
         answer = demo_client.post(
             "/api/chat", json={"message": "What do returns require?"}

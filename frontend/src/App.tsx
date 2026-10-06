@@ -23,7 +23,6 @@ import {
   lazy,
   Suspense,
   useEffect,
-  useMemo,
   useRef,
   useState
 } from "react";
@@ -96,10 +95,13 @@ export default function App() {
   const [deployment, setDeployment] = useState<DeploymentInfo>({
     read_only_demo: false,
     online_available: false,
-    online_model: ""
+    online_model: "",
+    online_models: []
   });
   const [dataSource, setDataSource] = useState<"offline" | "online">("offline");
   const [models, setModels] = useState<ModelRecord[]>([]);
+  const [selectedOfflineModel, setSelectedOfflineModel] = useState("");
+  const [selectedOnlineModel, setSelectedOnlineModel] = useState("");
   const [scan, setScan] = useState<ScanStatus | null>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Source[]>([]);
@@ -124,10 +126,6 @@ export default function App() {
   const [error, setError] = useState("");
   const fileInput = useRef<HTMLInputElement>(null);
 
-  const activeModel = useMemo(
-    () => models.find((model) => model.active),
-    [models]
-  );
   const appClassName = [
     "app",
     dark ? "dark" : "",
@@ -144,7 +142,15 @@ export default function App() {
   async function refresh() {
     try {
       await Promise.all([
-        api.deployment().then(setDeployment),
+        api.deployment().then((nextDeployment) => {
+          const onlineModels = nextDeployment.online_models ?? [];
+          setDeployment({ ...nextDeployment, online_models: onlineModels });
+          setSelectedOnlineModel((current) =>
+            onlineModels.some((model) => model.id === current)
+              ? current
+              : nextDeployment.online_model
+          );
+        }),
         api.documents().then(setDocuments),
         api.scanStatus().then(setScan)
       ]);
@@ -158,7 +164,16 @@ export default function App() {
     void refresh();
     const modelTimer = window.setTimeout(() => {
       void api.models()
-        .then(setModels)
+        .then((nextModels) => {
+          setModels(nextModels);
+          setSelectedOfflineModel((current) =>
+            nextModels.some((model) => model.id === current && model.available)
+              ? current
+              : nextModels.find((model) => model.active && model.available)?.id
+                ?? nextModels.find((model) => model.available)?.id
+                ?? ""
+          );
+        })
         .catch((caught) => {
           setError(caught instanceof Error ? caught.message : "Unable to load models");
         });
@@ -276,7 +291,13 @@ export default function App() {
     }, 700);
     setChatError("");
     try {
-      const response = await api.chat(message, dataSource);
+      const selectedModel =
+        dataSource === "online" ? selectedOnlineModel : selectedOfflineModel;
+      const response = await api.chat(
+        message,
+        dataSource,
+        selectedModel || undefined
+      );
       setAnswer(response);
       setFeedbackRating(null);
       setMessage("");
@@ -387,42 +408,56 @@ export default function App() {
         <p className={`source-boundary-notice ${dataSource}`} role="note">
           {sourceBoundaryMessage}
         </p>
-        {dataSource === "offline" ? (
-          <details className="model-settings">
-            <summary>Optional local model settings</summary>
-            <select
-              id="model"
-              aria-label="Optional local model"
-              value={activeModel?.id ?? ""}
-              onChange={async (event) => {
-                try {
-                  await api.activateModel(event.target.value);
-                  setModels(await api.models());
-                } catch (caught) {
-                  setError(
-                    caught instanceof Error ? caught.message : "Model unavailable"
-                  );
-                }
-              }}
-            >
-              {models.length === 0 && <option>Loading local models…</option>}
-              {models.map((model) => (
-                <option key={model.id} value={model.id} disabled={!model.available}>
-                  {model.provider} · {model.name}
-                  {model.installed ? " · Installed" : " · Setup required"}
-                </option>
-              ))}
-            </select>
-          </details>
-        ) : (
-          <div className="online-provider">
-            <Cloud size={17} />
-            <span>
-              <strong>Azure AI Foundry</strong>
-              <small>{deployment.online_model}</small>
-            </span>
-          </div>
-        )}
+        <div className="model-selector">
+          <label htmlFor="chat-model">
+            {dataSource === "online" ? "Azure LLM model" : "Docker LLM model"}
+          </label>
+          <select
+            id="chat-model"
+            aria-label={
+              dataSource === "online" ? "Azure LLM model" : "Docker LLM model"
+            }
+            value={
+              dataSource === "online"
+                ? selectedOnlineModel
+                : selectedOfflineModel
+            }
+            onChange={(event) => {
+              if (dataSource === "online") {
+                setSelectedOnlineModel(event.target.value);
+              } else {
+                setSelectedOfflineModel(event.target.value);
+              }
+            }}
+          >
+            {dataSource === "offline" && (
+              <option value="">Fast local index (no LLM)</option>
+            )}
+            {(dataSource === "online"
+              ? deployment.online_models
+              : models
+            ).map((model) => (
+              <option
+                key={model.id}
+                value={model.id}
+                disabled={!model.available}
+              >
+                {model.provider} · {model.name}
+                {!model.available ? " · Setup required" : ""}
+              </option>
+            ))}
+            {dataSource === "online" && deployment.online_models.length === 0 && (
+              <option value="">No Azure model configured</option>
+            )}
+          </select>
+          <small>
+            {dataSource === "online"
+              ? "Answers use the selected managed Foundry deployment."
+              : selectedOfflineModel
+                ? "Answers use the selected model installed in Docker."
+                : "Answers use fast extractive retrieval without an LLM."}
+          </small>
+        </div>
       </div>
       <div className="assistant-tabs" role="tablist" aria-label="Mira panels">
         <button
@@ -705,15 +740,46 @@ export default function App() {
           </div>
         </div>
         <div className="top-actions">
-          <span className="local-pill">
-            {dataSource === "online" ? <Cloud size={14} /> : <Check size={14} />}
-            <span className="mode-label-full">
-              {dataSource === "online" ? "Online · Azure AI" : "Offline · Local index"}
+          {deployment.read_only_demo ? (
+            <div className="environment-preview">
+              <span>Environment preview</span>
+              <div
+                className="environment-toggle"
+                role="group"
+                aria-label="Environment preview"
+              >
+                <button
+                  type="button"
+                  className={dataSource === "offline" ? "active" : ""}
+                  aria-label="Docker on-premises"
+                  aria-pressed={dataSource === "offline"}
+                  onClick={() => selectDataSource("offline")}
+                >
+                  <HardDrive size={14} /> Docker
+                </button>
+                <button
+                  type="button"
+                  className={dataSource === "online" ? "active" : ""}
+                  aria-label="Azure cloud"
+                  aria-pressed={dataSource === "online"}
+                  disabled={!deployment.online_available}
+                  onClick={() => selectDataSource("online")}
+                >
+                  <Cloud size={14} /> Azure
+                </button>
+              </div>
+            </div>
+          ) : (
+            <span className="local-pill">
+              {dataSource === "online" ? <Cloud size={14} /> : <Check size={14} />}
+              <span className="mode-label-full">
+                {dataSource === "online" ? "Online · Azure AI" : "Offline · Local index"}
+              </span>
+              <span className="mode-label-short">
+                {dataSource === "online" ? "Online" : "Offline"}
+              </span>
             </span>
-            <span className="mode-label-short">
-              {dataSource === "online" ? "Online" : "Offline"}
-            </span>
-          </span>
+          )}
           <button
             className="icon-button"
             aria-label="Toggle dark mode"

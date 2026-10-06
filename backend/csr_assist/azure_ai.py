@@ -41,7 +41,20 @@ class AzureAIClient:
         self.search_endpoint = settings.azure_ai_search_endpoint.rstrip("/")
         self.search_index = settings.azure_ai_search_index
         self.foundry_endpoint = settings.azure_ai_foundry_endpoint.rstrip("/")
-        self.foundry_deployment = settings.azure_ai_foundry_deployment
+        deployments = [
+            settings.azure_ai_foundry_deployment,
+            *settings.azure_ai_foundry_deployments.split(","),
+        ]
+        self.foundry_deployments = tuple(
+            dict.fromkeys(
+                deployment.strip()
+                for deployment in deployments
+                if deployment.strip()
+            )
+        )
+        self.foundry_deployment = (
+            self.foundry_deployments[0] if self.foundry_deployments else ""
+        )
         self.identity_client_id = settings.azure_ai_identity_client_id
         self.timeout = settings.azure_ai_timeout
         self.foundry_timeout = min(self.timeout, FOUNDRY_TIMEOUT_SECONDS)
@@ -140,16 +153,23 @@ class AzureAIClient:
             )
         return results
 
-    async def generate(self, prompt: str) -> GenerationResult:
-        """Generate a grounded answer with the configured Foundry deployment."""
+    async def generate(
+        self,
+        prompt: str,
+        deployment: str | None = None,
+    ) -> GenerationResult:
+        """Generate a grounded answer with an approved Foundry deployment."""
         if not self.configured:
             raise RuntimeError("Azure AI online mode is not configured")
+        selected_deployment = deployment or self.foundry_deployment
+        if selected_deployment not in self.foundry_deployments:
+            raise ValueError("Azure AI Foundry model is not approved")
         token = await self._access_token(
             "https://cognitiveservices.azure.com/"
         )
-        deployment = quote(self.foundry_deployment, safe="")
+        encoded_deployment = quote(selected_deployment, safe="")
         url = (
-            f"{self.foundry_endpoint}/openai/deployments/{deployment}/"
+            f"{self.foundry_endpoint}/openai/deployments/{encoded_deployment}/"
             "chat/completions"
         )
         payload = {
