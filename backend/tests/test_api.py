@@ -9,7 +9,9 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
+from csr_assist.api import UNSUPPORTED_ANSWER
 from csr_assist.config import Settings
+from csr_assist.ollama import GenerationResult
 
 
 def test_health_is_available_without_model(client: TestClient) -> None:
@@ -52,7 +54,51 @@ def test_search_and_insufficient_evidence(
 
     answer = client.post("/api/chat", json={"message": "holiday hours"}).json()
     assert answer["state"] == "insufficient-evidence"
-    assert answer["text"] == "I couldn't find that in the local documents"
+    assert answer["text"] == UNSUPPORTED_ANSWER
+
+
+def test_generated_chat_rejects_uncited_model_knowledge(
+    client: TestClient, settings: Settings
+) -> None:
+    (settings.documents_dir / "budget.txt").write_text(
+        "Capital spending for the France office requires manager approval.",
+        encoding="utf-8",
+    )
+    client.post("/api/scan")
+    prompts: list[str] = []
+
+    async def installed_models() -> set[str]:
+        return {"phi3:mini"}
+
+    async def unsupported_generation(
+        _model: str, prompt: str
+    ) -> GenerationResult:
+        prompts.append(prompt)
+        return GenerationResult(
+            text="Paris is the capital of France.",
+            prompt_tokens=20,
+            output_tokens=7,
+        )
+
+    client.app.state.ollama.installed_models = installed_models
+    client.app.state.ollama.generate = unsupported_generation
+
+    body = client.post(
+        "/api/chat",
+        json={
+            "message": "What is the capital of France?",
+            "mode": "generated",
+        },
+    ).json()
+
+    assert body["state"] == "insufficient-evidence"
+    assert body["text"] == UNSUPPORTED_ANSWER
+    assert body["citations"] == []
+    assert body["sources"] == []
+    assert "Do not use prior knowledge, external knowledge, or speculation" in (
+        prompts[0]
+    )
+    assert UNSUPPORTED_ANSWER in prompts[0]
 
 
 def test_search_uses_fast_keyword_path(
@@ -205,6 +251,27 @@ def test_fast_follow_up_reuses_recent_sources(
     assert body["sources"][0]["name"] == "policy.txt"
     assert body["text"].startswith("Customer-ready response:")
     assert "proof of purchase" in body["text"]
+
+
+def test_unrelated_follow_up_does_not_reuse_recent_sources(
+    client: TestClient, settings: Settings
+) -> None:
+    (settings.documents_dir / "policy.txt").write_text(
+        "Returns require proof of purchase.", encoding="utf-8"
+    )
+    (settings.documents_dir / "budget.txt").write_text(
+        "Capital expenses require manager approval.", encoding="utf-8"
+    )
+    client.post("/api/scan")
+    client.post("/api/chat", json={"message": "What is the return policy?"})
+
+    body = client.post(
+        "/api/chat", json={"message": "What is the capital of France?"}
+    ).json()
+
+    assert body["state"] == "insufficient-evidence"
+    assert body["text"] == UNSUPPORTED_ANSWER
+    assert body["sources"] == []
 
 
 def test_upload_validation(client: TestClient) -> None:

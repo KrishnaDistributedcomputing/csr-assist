@@ -26,10 +26,14 @@ SEARCH_STOP_WORDS = frozenset(
         "can",
         "could",
         "do",
+        "document",
+        "documents",
         "does",
+        "evidence",
         "for",
         "how",
         "in",
+        "information",
         "is",
         "it",
         "my",
@@ -37,7 +41,11 @@ SEARCH_STOP_WORDS = frozenset(
         "or",
         "our",
         "please",
+        "policy",
+        "question",
         "should",
+        "scope",
+        "supported",
         "that",
         "the",
         "this",
@@ -49,6 +57,7 @@ SEARCH_STOP_WORDS = frozenset(
         "why",
         "with",
         "would",
+        "unsupported",
         "your",
     }
 )
@@ -66,7 +75,7 @@ FACT_CATEGORY_PATTERNS = {
         re.IGNORECASE,
     ),
 }
-ANSWER_CACHE_VERSION = 2
+ANSWER_CACHE_VERSION = 4
 
 
 def query_terms(query: str) -> list[str]:

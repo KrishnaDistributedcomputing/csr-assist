@@ -13,6 +13,12 @@ provides keyword search, and asks a local Ollama model to prepare
 evidence-grounded answers. Mira, the built-in assistant, cites local source
 excerpts and reports missing evidence rather than simulating an answer.
 
+Mira answers only from retrieved document content. Questions that are
+unrelated, out of scope, or unsupported receive this response:
+
+> I’m unable to answer this question because it falls outside the scope of the
+> provided documents or is not supported by their content.
+
 ![CSR Assist answer workspace](docs/images/overview.png)
 
 Detailed guides:

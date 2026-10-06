@@ -36,6 +36,12 @@ Suggested prompts include:
 The model selector controls optional generated mode. Models marked **Setup
 required** are approved but not installed.
 
+Mira does not use external knowledge or speculate beyond retrieved excerpts.
+When the documents do not support an answer, Mira responds:
+
+> I’m unable to answer this question because it falls outside the scope of the
+> provided documents or is not supported by their content.
+
 ## Improve retrieval with feedback
 
 Use the thumbs-up or thumbs-down controls below an answer.
