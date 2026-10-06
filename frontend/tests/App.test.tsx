@@ -59,9 +59,30 @@ test("renders the document workspace and Mira", async () => {
   expect(await screen.findByLabelText("Token usage dashboard")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("tab", { name: "Architecture" }));
   expect(await screen.findByLabelText("System architecture")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("tab", { name: "Data compliance" }));
+  expect(
+    await screen.findByLabelText("Data and accessibility compliance")
+  ).toBeInTheDocument();
+  expect(screen.getByText(/not a certification or legal opinion/i)).toBeInTheDocument();
+  expect(
+    screen.getByRole("link", { name: /Official standard/i })
+  ).toHaveAttribute("href", expect.stringContaining("11-software"));
   fireEvent.click(screen.getByRole("tab", { name: /History/ }));
   expect(screen.getByText("No history yet")).toBeInTheDocument();
   expect(screen.queryByLabelText("Message Mira")).not.toBeInTheDocument();
+});
+
+test("workspace tabs support keyboard navigation", async () => {
+  render(<App />);
+  const answers = screen.getByRole("tab", { name: "Answer workspace" });
+  answers.focus();
+  fireEvent.keyDown(answers, { key: "End" });
+
+  const compliance = screen.getByRole("tab", { name: "Data compliance" });
+  expect(compliance).toHaveAttribute("aria-selected", "true");
+  expect(
+    await screen.findByLabelText("Data and accessibility compliance")
+  ).toBeInTheDocument();
 });
 
 test("shows document search progress while the request is pending", async () => {
@@ -158,6 +179,10 @@ test("switches document search to Azure AI online mode", async () => {
   render(<App />);
   const onlineButtons = await screen.findAllByRole("button", { name: /Online/ });
   fireEvent.click(onlineButtons[onlineButtons.length - 1]);
+  expect(document.querySelector("main")).toHaveClass("source-online");
+  expect(
+    screen.getAllByText(/Offline documents are isolated/i).length
+  ).toBeGreaterThan(0);
   fireEvent.change(screen.getByLabelText("Search documents"), {
     target: { value: "Cogsdale" }
   });

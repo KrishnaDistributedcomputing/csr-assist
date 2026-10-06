@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import {
   FormEvent,
+  KeyboardEvent,
   lazy,
   Suspense,
   useEffect,
@@ -55,6 +56,14 @@ const chatProgressMessages = [
 ];
 const AnalyticsPanel = lazy(() => import("./AnalyticsPanel"));
 const ArchitecturePanel = lazy(() => import("./ArchitecturePanel"));
+const CompliancePanel = lazy(() => import("./CompliancePanel"));
+type WorkspaceTab = "answers" | "analytics" | "architecture" | "compliance";
+const workspaceTabs: WorkspaceTab[] = [
+  "answers",
+  "analytics",
+  "architecture",
+  "compliance"
+];
 
 function PanelLoading({ label }: { label: string }) {
   return (
@@ -85,9 +94,7 @@ export default function App() {
   const [answer, setAnswer] = useState<ChatResponse | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [assistantTab, setAssistantTab] = useState<"chat" | "history">("chat");
-  const [workspaceTab, setWorkspaceTab] = useState<
-    "answers" | "analytics" | "architecture"
-  >("answers");
+  const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>("answers");
   const [usage, setUsage] = useState<UsageDashboard | null>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [usageLoaded, setUsageLoaded] = useState(false);
@@ -104,6 +111,16 @@ export default function App() {
     () => models.find((model) => model.active),
     [models]
   );
+  const appClassName = [
+    "app",
+    dark ? "dark" : "",
+    widget ? "widget" : "",
+    `source-${dataSource}`
+  ].filter(Boolean).join(" ");
+  const sourceBoundaryMessage =
+    dataSource === "online"
+      ? "Online mode searches only approved Azure-indexed sources. Offline documents are isolated and are not available in this mode."
+      : "Offline mode searches only the local document index. Azure-hosted sources are not available in this mode.";
 
   async function refresh() {
     try {
@@ -200,6 +217,28 @@ export default function App() {
     }
   }
 
+  function handleWorkspaceTabKeyDown(event: KeyboardEvent<HTMLButtonElement>) {
+    const currentIndex = workspaceTabs.indexOf(workspaceTab);
+    let nextIndex = currentIndex;
+    if (event.key === "ArrowRight") {
+      nextIndex = (currentIndex + 1) % workspaceTabs.length;
+    } else if (event.key === "ArrowLeft") {
+      nextIndex = (currentIndex - 1 + workspaceTabs.length) % workspaceTabs.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = workspaceTabs.length - 1;
+    } else {
+      return;
+    }
+    event.preventDefault();
+    const nextTab = workspaceTabs[nextIndex];
+    setWorkspaceTab(nextTab);
+    window.requestAnimationFrame(() => {
+      document.getElementById(`workspace-tab-${nextTab}`)?.focus();
+    });
+  }
+
   async function handleChat(event: FormEvent) {
     event.preventDefault();
     if (!message.trim()) return;
@@ -272,6 +311,7 @@ export default function App() {
     <div className="source-toggle" role="group" aria-label="Knowledge source">
       <button
         className={dataSource === "offline" ? "active" : ""}
+        aria-pressed={dataSource === "offline"}
         onClick={() => selectDataSource("offline")}
         type="button"
       >
@@ -279,6 +319,7 @@ export default function App() {
       </button>
       <button
         className={dataSource === "online" ? "active online" : ""}
+        aria-pressed={dataSource === "online"}
         onClick={() => selectDataSource("online")}
         disabled={!deployment.online_available}
         title={
@@ -312,6 +353,9 @@ export default function App() {
       <div className="model-row">
         <label>Knowledge source</label>
         {sourceToggle}
+        <p className={`source-boundary-notice ${dataSource}`} role="note">
+          {sourceBoundaryMessage}
+        </p>
         {dataSource === "offline" ? (
           <>
             <label htmlFor="model">Optional local model</label>
@@ -567,11 +611,11 @@ export default function App() {
   );
 
   if (widget) {
-    return <main className={dark ? "app dark widget" : "app widget"}>{assistant}</main>;
+    return <main className={appClassName}>{assistant}</main>;
   }
 
   return (
-    <main className={dark ? "app dark" : "app"}>
+    <main className={appClassName}>
       <header className="topbar">
         <div className="brand">
           <div className="brand-mark"><FileSearch /></div>
@@ -643,31 +687,60 @@ export default function App() {
           </div>
           <div className="workspace-tabs" role="tablist" aria-label="Workspace panels">
             <button
+              id="workspace-tab-answers"
               role="tab"
               aria-selected={workspaceTab === "answers"}
+              aria-controls="workspace-panel-answers"
+              tabIndex={workspaceTab === "answers" ? 0 : -1}
               className={workspaceTab === "answers" ? "active" : ""}
               onClick={() => setWorkspaceTab("answers")}
+              onKeyDown={handleWorkspaceTabKeyDown}
             >
               Answer workspace
             </button>
             <button
+              id="workspace-tab-analytics"
               role="tab"
               aria-selected={workspaceTab === "analytics"}
+              aria-controls="workspace-panel-analytics"
+              tabIndex={workspaceTab === "analytics" ? 0 : -1}
               className={workspaceTab === "analytics" ? "active" : ""}
               onClick={() => setWorkspaceTab("analytics")}
+              onKeyDown={handleWorkspaceTabKeyDown}
             >
               Analytics
             </button>
             <button
+              id="workspace-tab-architecture"
               role="tab"
               aria-selected={workspaceTab === "architecture"}
+              aria-controls="workspace-panel-architecture"
+              tabIndex={workspaceTab === "architecture" ? 0 : -1}
               className={workspaceTab === "architecture" ? "active" : ""}
               onClick={() => setWorkspaceTab("architecture")}
+              onKeyDown={handleWorkspaceTabKeyDown}
             >
               Architecture
             </button>
+            <button
+              id="workspace-tab-compliance"
+              role="tab"
+              aria-selected={workspaceTab === "compliance"}
+              aria-controls="workspace-panel-compliance"
+              tabIndex={workspaceTab === "compliance" ? 0 : -1}
+              className={workspaceTab === "compliance" ? "active" : ""}
+              onClick={() => setWorkspaceTab("compliance")}
+              onKeyDown={handleWorkspaceTabKeyDown}
+            >
+              Data compliance
+            </button>
           </div>
-          <div hidden={workspaceTab !== "answers"}>
+          <div
+            id="workspace-panel-answers"
+            role="tabpanel"
+            aria-labelledby="workspace-tab-answers"
+            hidden={workspaceTab !== "answers"}
+          >
           <div className="source-mode-bar">
             <div>
               <strong>
@@ -675,8 +748,8 @@ export default function App() {
               </strong>
               <span>
                 {dataSource === "online"
-                  ? "Queries and public demo excerpts are processed by Azure AI Search and Foundry."
-                  : "Queries stay in the local SQLite document index."}
+                  ? "Only approved Azure-indexed sources are available. Offline documents are isolated and won’t be searched."
+                  : "Only local SQLite documents are available. Azure-hosted sources won’t be searched."}
               </span>
             </div>
             {sourceToggle}
@@ -780,18 +853,41 @@ export default function App() {
           </div>
           </div>
           {workspaceTab === "analytics" && (
-            <Suspense fallback={<PanelLoading label="Loading local analytics" />}>
-              {usage ? (
-                <AnalyticsPanel usage={usage} />
-              ) : (
-                <PanelLoading label="Loading local analytics" />
-              )}
-            </Suspense>
+            <div
+              id="workspace-panel-analytics"
+              role="tabpanel"
+              aria-labelledby="workspace-tab-analytics"
+            >
+              <Suspense fallback={<PanelLoading label="Loading local analytics" />}>
+                {usage ? (
+                  <AnalyticsPanel usage={usage} />
+                ) : (
+                  <PanelLoading label="Loading local analytics" />
+                )}
+              </Suspense>
+            </div>
           )}
           {workspaceTab === "architecture" && (
-            <Suspense fallback={<PanelLoading label="Loading architecture" />}>
-              <ArchitecturePanel />
-            </Suspense>
+            <div
+              id="workspace-panel-architecture"
+              role="tabpanel"
+              aria-labelledby="workspace-tab-architecture"
+            >
+              <Suspense fallback={<PanelLoading label="Loading architecture" />}>
+                <ArchitecturePanel />
+              </Suspense>
+            </div>
+          )}
+          {workspaceTab === "compliance" && (
+            <div
+              id="workspace-panel-compliance"
+              role="tabpanel"
+              aria-labelledby="workspace-tab-compliance"
+            >
+              <Suspense fallback={<PanelLoading label="Loading compliance details" />}>
+                <CompliancePanel />
+              </Suspense>
+            </div>
           )}
         </section>
         <aside className="desktop-assistant">{assistant}</aside>
