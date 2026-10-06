@@ -17,10 +17,13 @@ export interface Source {
   location: string;
   text: string;
   extraction: "native" | "ocr" | "structured";
+  channel?: "offline" | "online";
+  source_url?: string;
 }
 
 export interface SearchResponse {
   query: string;
+  source: "offline" | "online";
   results: Source[];
 }
 
@@ -47,6 +50,7 @@ export interface ChatResponse {
   sources: Source[];
   cached: boolean;
   history_id: number;
+  notice?: string;
 }
 
 export interface ScanStatus {
@@ -61,6 +65,8 @@ export interface ScanStatus {
 
 export interface DeploymentInfo {
   read_only_demo: boolean;
+  online_available: boolean;
+  online_model: string;
 }
 
 export interface HistoryEntry {

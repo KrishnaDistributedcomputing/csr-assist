@@ -8,10 +8,11 @@ ms.topic: concept
 
 ## Architecture overview
 
-CSR Assist runs the React interface, FastAPI application, SQLite indexes,
-document processors, OCR, and Ollama runtime in one local container. The
-default network binding exposes only the application on loopback. Ollama is not
-published to the host network.
+CSR Assist supports two explicit processing boundaries. Offline mode runs the
+React interface, FastAPI application, SQLite indexes, document processors, OCR,
+and Ollama runtime in one local container. Online mode uses managed identity to
+query an approved Azure AI Search index and invoke a grounded Azure AI Foundry
+model.
 
 ![Architecture page showing the local processing layers](./images/architecture.png)
 
@@ -23,11 +24,15 @@ published to the host network.
    JSON, XML, and supported image formats.
 3. The processing pipeline hashes files, skips unchanged content, chunks text,
    extracts sentence-level facts, and stores processed data in SQLite.
-4. Retrieval checks the revision-aware answer cache, key-fact FTS5 index, full
-   chunk FTS5 index, and optional vector index in that order.
+4. Offline retrieval checks the revision-aware answer cache, key-fact FTS5
+   index, full chunk FTS5 index, and optional vector index in that order.
+   Online retrieval queries the configured Azure AI Search index.
 5. Fast mode returns cited local evidence without model tokens. Generated mode
    sends bounded local evidence to an approved Ollama model.
-6. Good and bad ratings adjust local source weights. A bad rating invalidates
+6. Online mode sends bounded retrieved excerpts and the question to the
+   configured Foundry deployment. Generated claims must cite a retrieved
+   source.
+7. Good and bad ratings adjust local source weights. A bad rating invalidates
    the matching cached answer.
 
 ## Persistent storage
@@ -79,6 +84,12 @@ increments the corpus revision and removes stale answers.
 * Browser security headers restrict scripts, connections, frames, and referrers
 * Document instructions are treated as untrusted evidence
 * Feedback never triggers automatic training or leaves the workstation
+* Online mode is opt-in and clearly labelled in the interface
+* Azure credentials are not stored in the application; managed identity
+  obtains short-lived tokens for Search and Foundry
+* The application identity has read-only Search data access and Foundry user
+  access
+* Uncited Foundry output is rejected instead of returned to the user
 
 ## Deployment topology
 

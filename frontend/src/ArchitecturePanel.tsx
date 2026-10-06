@@ -22,21 +22,21 @@ const layers = [
   },
   {
     icon: Database,
-    title: "Local knowledge index",
-    detail: "Metadata, FTS5 facts, chunks, vectors, cache, history, and feedback",
-    path: "/data/index/csr-assist.db",
+    title: "Knowledge indexes",
+    detail: "Offline SQLite FTS5 plus an optional managed Azure AI Search index",
+    path: "Offline: /data/index · Online: Azure AI Search",
   },
   {
     icon: Search,
     title: "Retrieval and cache",
-    detail: "Cache first, then key facts, full text, and optional vectors",
-    path: "Revision-aware local retrieval",
+    detail: "Choose local cache and FTS or managed Azure AI Search retrieval",
+    path: "Explicit Offline and Online modes",
   },
   {
     icon: Bot,
     title: "Mira response",
-    detail: "Fast cited extraction by default, optional local model generation",
-    path: "No cloud inference",
+    detail: "Cited extraction, optional Ollama, or grounded Azure AI Foundry",
+    path: "The selected mode controls the processing boundary",
   },
 ];
 
@@ -46,16 +46,17 @@ export default function ArchitecturePanel() {
       <div className="architecture-hero">
         <div>
           <p className="eyebrow">System architecture</p>
-          <h2>Local-first document intelligence</h2>
+          <h2>Hybrid document intelligence</h2>
           <p>
-            Documents stay inside the managed container volumes. Processing,
-            retrieval, feedback, caching, and model inference run locally.
+            Offline mode keeps retrieval and optional generation local. Online
+            mode explicitly uses Azure AI Search and Azure AI Foundry for
+            selected public or approved content.
           </p>
         </div>
         <div className="architecture-lock">
           <LockKeyhole size={22} />
-          <strong>Private by design</strong>
-          <span>Loopback-only application and model runtime</span>
+          <strong>Choice by design</strong>
+          <span>Users select the local or Azure processing boundary</span>
         </div>
       </div>
 
@@ -77,6 +78,15 @@ export default function ArchitecturePanel() {
       </div>
 
       <div className="architecture-details">
+        <article>
+          <h3>Online answer path</h3>
+          <ol>
+            <li>Search the managed Azure AI Search index.</li>
+            <li>Send bounded retrieved excerpts to the Foundry model.</li>
+            <li>Require source citations and reject uncited output.</li>
+            <li>Use the exact refusal when indexed evidence is insufficient.</li>
+          </ol>
+        </article>
         <article>
           <h3>Fast answer path</h3>
           <ol>

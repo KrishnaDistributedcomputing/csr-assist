@@ -53,16 +53,44 @@ It runs as a scale-to-zero Azure Container App in West US 2.
 
 The public deployment sets `CSR_READ_ONLY_DEMO=true`. In this mode:
 
-* Only the bundled `SAMPLE-support-policy.md` file is indexed
+* Only bundled public sample documents are indexed
 * Uploads and administrative mutations return HTTP 403
 * Search and chat history is not stored or exposed
 * Feedback cannot change shared source rankings
 * The interface identifies itself as a public read-only demo
-* Fast cited answers remain available without provisioning an Ollama model
+* Offline cited answers remain available without provisioning an Ollama model
+* Online mode uses Azure AI Search and a grounded Azure AI Foundry deployment
 
 The first request after an idle period can take longer while Azure starts a
 replica. Use the local Docker deployment for private documents, persistent
 history, feedback, uploads, and local model generation.
+
+### Online and offline modes
+
+The source selector makes the processing boundary explicit:
+
+* **Offline** searches the local SQLite FTS5 index and uses fast extraction or
+  an optional loopback Ollama model.
+* **Online** searches a configured Azure AI Search index and sends only the
+  bounded retrieved excerpts and question to Azure AI Foundry for grounded
+  generation.
+
+Online mode uses managed identity. Assign `Search Index Data Reader` on the
+Search service and `Foundry User` on the Foundry resource to the application's
+identity. Configure:
+
+```text
+CSR_AZURE_AI_SEARCH_ENDPOINT=https://<service>.search.windows.net
+CSR_AZURE_AI_SEARCH_INDEX=csr-assist-documents
+CSR_AZURE_AI_FOUNDRY_ENDPOINT=https://<resource>.services.ai.azure.com
+CSR_AZURE_AI_FOUNDRY_DEPLOYMENT=<deployment-name>
+CSR_AZURE_AI_IDENTITY_CLIENT_ID=<user-assigned-managed-identity-client-id>
+```
+
+The repository includes
+[`PUBLIC-cogsdale-overview.md`](sample-documents/PUBLIC-cogsdale-overview.md),
+a concise demo document derived from Cogsdale's public website with source
+links and a non-authoritative-content notice.
 
 ## Persistent volumes
 

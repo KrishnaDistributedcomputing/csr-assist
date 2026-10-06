@@ -24,13 +24,15 @@ export const api = {
   models: () => request<ModelRecord[]>("/models"),
   scanStatus: () => request<ScanStatus>("/scan/status"),
   scan: () => request<ScanStatus>("/scan", { method: "POST" }),
-  search: (query: string) =>
-    request<SearchResponse>(`/search?q=${encodeURIComponent(query)}`),
-  chat: (message: string) =>
+  search: (query: string, source: "offline" | "online") =>
+    request<SearchResponse>(
+      `/search?q=${encodeURIComponent(query)}&source=${source}`
+    ),
+  chat: (message: string, source: "offline" | "online") =>
     request<ChatResponse>("/chat", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ message })
+      body: JSON.stringify({ message, source })
     }),
   history: () => request<HistoryEntry[]>("/history"),
   usage: () => request<UsageDashboard>("/usage"),

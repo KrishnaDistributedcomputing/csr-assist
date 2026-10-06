@@ -29,6 +29,16 @@ uploads, persist search or chat history, accept feedback, or allow
 administrative changes. A scale-from-zero cold start can delay the first
 request after an idle period.
 
+Use the source selector to choose a processing boundary:
+
+* **Offline** searches the bundled local index and returns cited extracted
+  content.
+* **Online** searches the managed Azure AI Search index and uses Azure AI
+  Foundry to generate a grounded answer from the retrieved excerpts.
+
+The interface labels results and citations as Online or Offline. Online mode
+sends the question and bounded public demo excerpts to Azure.
+
 ## Ask Mira
 
 Open Mira from the desktop side panel or the floating mobile button. Fast mode

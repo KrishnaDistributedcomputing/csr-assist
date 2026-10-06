@@ -10,7 +10,11 @@ beforeEach(() => {
       const value = url.includes("/models")
         ? []
         : url.includes("/deployment")
-          ? { read_only_demo: false }
+          ? {
+              read_only_demo: false,
+              online_available: false,
+              online_model: ""
+            }
         : url.includes("/usage")
           ? {
               totals: {
@@ -49,6 +53,7 @@ test("renders the document workspace and Mira", async () => {
   expect(screen.getByRole("heading", { name: /find answers/i })).toBeInTheDocument();
   expect(screen.getByLabelText("Mira assistant")).toBeInTheDocument();
   expect(await screen.findByText("No documents indexed")).toBeInTheDocument();
+  expect(screen.getAllByRole("button", { name: /Online/ })[0]).toBeDisabled();
   expect(screen.queryByLabelText("Token usage dashboard")).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("tab", { name: "Analytics" }));
   expect(await screen.findByLabelText("Token usage dashboard")).toBeInTheDocument();
@@ -88,7 +93,11 @@ test("shows document search progress while the request is pending", async () => 
           feedback: { total: 0, good: 0, bad: 0 }
         }
       : url.includes("/deployment")
-        ? { read_only_demo: false }
+        ? {
+            read_only_demo: false,
+            online_available: false,
+            online_model: ""
+          }
       : url.includes("/scan/status")
         ? { state: "idle", id: "", discovered: 0, processed: 0, unchanged: 0, removed: 0, errors: 0 }
         : [];
@@ -115,4 +124,49 @@ test("shows document search progress while the request is pending", async () => 
       })
     );
   });
+});
+
+test("switches document search to Azure AI online mode", async () => {
+  const currentFetch = vi.mocked(fetch);
+  currentFetch.mockImplementation(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    const value = url.includes("/deployment")
+      ? {
+          read_only_demo: true,
+          online_available: true,
+          online_model: "phi-4-mini"
+        }
+      : url.includes("/search")
+        ? { query: "Cogsdale", source: "online", results: [] }
+        : url.includes("/scan/status")
+          ? {
+              state: "idle",
+              id: "",
+              discovered: 0,
+              processed: 0,
+              unchanged: 0,
+              removed: 0,
+              errors: 0
+            }
+          : [];
+    return new Response(JSON.stringify(value), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+  });
+
+  render(<App />);
+  const onlineButtons = await screen.findAllByRole("button", { name: /Online/ });
+  fireEvent.click(onlineButtons[onlineButtons.length - 1]);
+  fireEvent.change(screen.getByLabelText("Search documents"), {
+    target: { value: "Cogsdale" }
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Search" }));
+
+  await screen.findByText("0 offline files");
+  expect(
+    currentFetch.mock.calls.some(([input]) =>
+      String(input).includes("/search?q=Cogsdale&source=online")
+    )
+  ).toBe(true);
 });

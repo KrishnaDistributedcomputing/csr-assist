@@ -1,8 +1,10 @@
 import {
   Bot,
   Check,
+  Cloud,
   Clipboard,
   FileSearch,
+  HardDrive,
   Menu,
   Moon,
   RefreshCw,
@@ -43,12 +45,12 @@ const prompts = [
 const searchProgressMessages = [
   "Searching extracted key facts",
   "Checking full document excerpts",
-  "Ranking the best local matches"
+  "Ranking the best matches"
 ];
 const chatProgressMessages = [
   "Checking the previous-answer cache",
   "Searching extracted key facts",
-  "Ranking local sources",
+  "Ranking retrieved sources",
   "Preparing citations"
 ];
 const AnalyticsPanel = lazy(() => import("./AnalyticsPanel"));
@@ -69,8 +71,11 @@ export default function App() {
   const [mobileOpen, setMobileOpen] = useState(widget);
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
   const [deployment, setDeployment] = useState<DeploymentInfo>({
-    read_only_demo: false
+    read_only_demo: false,
+    online_available: false,
+    online_model: ""
   });
+  const [dataSource, setDataSource] = useState<"offline" | "online">("offline");
   const [models, setModels] = useState<ModelRecord[]>([]);
   const [scan, setScan] = useState<ScanStatus | null>(null);
   const [query, setQuery] = useState("");
@@ -181,7 +186,7 @@ export default function App() {
       setSearchProgress(searchProgressMessages[progressIndex]);
     }, 700);
     try {
-      const response = await api.search(query);
+      const response = await api.search(query, dataSource);
       setResults(response.results);
       setPreview(response.results[0] ?? null);
       setHistoryLoaded(false);
@@ -209,7 +214,7 @@ export default function App() {
     }, 700);
     setChatError("");
     try {
-      const response = await api.chat(message);
+      const response = await api.chat(message, dataSource);
       setAnswer(response);
       setFeedbackRating(null);
       setMessage("");
@@ -255,6 +260,39 @@ export default function App() {
     }
   }
 
+  function selectDataSource(source: "offline" | "online") {
+    setDataSource(source);
+    setResults([]);
+    setPreview(null);
+    setAnswer(null);
+    setFeedbackRating(null);
+  }
+
+  const sourceToggle = (
+    <div className="source-toggle" role="group" aria-label="Knowledge source">
+      <button
+        className={dataSource === "offline" ? "active" : ""}
+        onClick={() => selectDataSource("offline")}
+        type="button"
+      >
+        <HardDrive size={15} /> Offline
+      </button>
+      <button
+        className={dataSource === "online" ? "active online" : ""}
+        onClick={() => selectDataSource("online")}
+        disabled={!deployment.online_available}
+        title={
+          deployment.online_available
+            ? "Use Azure AI Search and Azure AI Foundry"
+            : "Azure AI online mode is not configured"
+        }
+        type="button"
+      >
+        <Cloud size={15} /> Online
+      </button>
+    </div>
+  );
+
   const assistant = (
     <section className="assistant-panel" aria-label="Mira assistant">
       <header className="assistant-header">
@@ -272,27 +310,43 @@ export default function App() {
         </button>
       </header>
       <div className="model-row">
-        <label htmlFor="model">Local model</label>
-        <select
-          id="model"
-          value={activeModel?.id ?? ""}
-          onChange={async (event) => {
-            try {
-              await api.activateModel(event.target.value);
-              setModels(await api.models());
-            } catch (caught) {
-              setError(caught instanceof Error ? caught.message : "Model unavailable");
-            }
-          }}
-        >
-          {models.length === 0 && <option>Loading local models…</option>}
-          {models.map((model) => (
-            <option key={model.id} value={model.id} disabled={!model.available}>
-              {model.provider} · {model.name}
-              {model.installed ? " · Installed" : " · Setup required"}
-            </option>
-          ))}
-        </select>
+        <label>Knowledge source</label>
+        {sourceToggle}
+        {dataSource === "offline" ? (
+          <>
+            <label htmlFor="model">Optional local model</label>
+            <select
+              id="model"
+              value={activeModel?.id ?? ""}
+              onChange={async (event) => {
+                try {
+                  await api.activateModel(event.target.value);
+                  setModels(await api.models());
+                } catch (caught) {
+                  setError(
+                    caught instanceof Error ? caught.message : "Model unavailable"
+                  );
+                }
+              }}
+            >
+              {models.length === 0 && <option>Loading local models…</option>}
+              {models.map((model) => (
+                <option key={model.id} value={model.id} disabled={!model.available}>
+                  {model.provider} · {model.name}
+                  {model.installed ? " · Installed" : " · Setup required"}
+                </option>
+              ))}
+            </select>
+          </>
+        ) : (
+          <div className="online-provider">
+            <Cloud size={17} />
+            <span>
+              <strong>Azure AI Foundry</strong>
+              <small>{deployment.online_model}</small>
+            </span>
+          </div>
+        )}
       </div>
       <div className="assistant-tabs" role="tablist" aria-label="Mira panels">
         <button
@@ -317,8 +371,9 @@ export default function App() {
           {!answer && (
             <div className="mira-intro">
               <p>
-                I’ll help you find accurate information in your local documents
-                and prepare a clear response.
+                {dataSource === "online"
+                  ? "I’ll use Azure AI Search and Foundry to answer from the public demo sources."
+                  : "I’ll use the offline index to answer from the local documents."}
               </p>
               <div className="prompt-list">
                 {prompts.map((prompt) => (
@@ -359,6 +414,11 @@ export default function App() {
                 <strong>Mira</strong>
               </div>
               <p>{answer.text}</p>
+              {answer.notice && (
+                <div className="answer-notice" role="status">
+                  {answer.notice}
+                </div>
+              )}
               {answer.sources.length > 0 && (
                 <div className="source-cards">
                   <strong>Sources</strong>
@@ -369,7 +429,10 @@ export default function App() {
                       className="source-card"
                     >
                       <span>[{index + 1}] {source.name}</span>
-                      <small>{source.location}</small>
+                      <small>
+                        {source.channel === "online" ? "Online" : "Offline"} ·{" "}
+                        {source.location}
+                      </small>
                     </button>
                   ))}
                 </div>
@@ -523,8 +586,8 @@ export default function App() {
         </div>
         <div className="top-actions">
           <span className="local-pill">
-            <Check size={14} />
-            {deployment.read_only_demo ? "Sample data only" : "Local only"}
+            {dataSource === "online" ? <Cloud size={14} /> : <Check size={14} />}
+            {dataSource === "online" ? "Online · Azure AI" : "Offline · Local index"}
           </span>
           <button
             className="icon-button"
@@ -548,7 +611,7 @@ export default function App() {
               </h1>
               <p>
                 {deployment.read_only_demo
-                  ? "Search, review, and cite the bundled demonstration policy."
+                  ? "Compare cited answers from the bundled offline index and Azure AI."
                   : "Search, review, and cite documents without sending data anywhere."}
               </p>
             </div>
@@ -605,6 +668,19 @@ export default function App() {
             </button>
           </div>
           <div hidden={workspaceTab !== "answers"}>
+          <div className="source-mode-bar">
+            <div>
+              <strong>
+                {dataSource === "online" ? "Online search" : "Offline search"}
+              </strong>
+              <span>
+                {dataSource === "online"
+                  ? "Queries and public demo excerpts are processed by Azure AI Search and Foundry."
+                  : "Queries stay in the local SQLite document index."}
+              </span>
+            </div>
+            {sourceToggle}
+          </div>
           <form className="search-bar" onSubmit={handleSearch}>
             <Search size={20} />
             <input
@@ -620,14 +696,21 @@ export default function App() {
               <RefreshCw className="spin" size={17} />
               <div>
                 <strong>{searchProgress}</strong>
-                <span>Processing locally. No document content leaves this device.</span>
+                <span>
+                  {dataSource === "online"
+                    ? "Searching the managed Azure AI index."
+                    : "Processing locally. No document content leaves this device."}
+                </span>
               </div>
             </div>
           )}
           <div className="content-grid">
             <section className="library card">
               <div className="card-heading">
-                <div><h2>Documents</h2><span>{documents.length} local files</span></div>
+                <div>
+                  <h2>Documents</h2>
+                  <span>{documents.length} offline files</span>
+                </div>
                 {scan && <span className={`status ${scan.state}`}>{scan.state}</span>}
               </div>
               <div className="document-list">
@@ -660,7 +743,12 @@ export default function App() {
                   {results.map((result) => (
                     <button key={result.chunk_id} onClick={() => setPreview(result)}>
                       <strong>{result.name}</strong>
-                      <span>{result.location}</span>
+                      <span>
+                        <span className={`channel-badge ${result.channel ?? dataSource}`}>
+                          {result.channel === "online" ? "Online" : "Offline"}
+                        </span>
+                        {result.location}
+                      </span>
                       <p>{result.text.slice(0, 170)}{result.text.length > 170 ? "…" : ""}</p>
                     </button>
                   ))}
@@ -675,7 +763,10 @@ export default function App() {
                 <article>
                   <p className="eyebrow">{preview.relative_path}</p>
                   <h3>{preview.name}</h3>
-                  <span className="location">{preview.location} · {preview.extraction}</span>
+                  <span className="location">
+                    {preview.channel === "online" ? "Online" : "Offline"} ·{" "}
+                    {preview.location} · {preview.extraction}
+                  </span>
                   <p className="excerpt">{preview.text}</p>
                 </article>
               ) : (

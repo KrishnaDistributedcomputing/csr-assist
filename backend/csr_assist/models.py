@@ -15,6 +15,7 @@ class ChatRequest(BaseModel):
 
     message: str = Field(min_length=1, max_length=4000)
     mode: Literal["fast", "generated"] = "fast"
+    source: Literal["offline", "online"] = "offline"
 
 
 class ModelSelection(BaseModel):

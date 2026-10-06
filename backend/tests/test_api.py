@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import httpx
 from fastapi.testclient import TestClient
 
 from csr_assist.api import UNSUPPORTED_ANSWER, create_app
@@ -120,6 +121,189 @@ def test_search_uses_fast_keyword_path(
     assert response.status_code == 200
     assert response.json()["results"]
     assert embedded == []
+
+
+def test_online_mode_requires_azure_configuration(client: TestClient) -> None:
+    assert (
+        client.get(
+            "/api/search",
+            params={"q": "Cogsdale", "source": "online"},
+        ).status_code
+        == 503
+    )
+    assert (
+        client.post(
+            "/api/chat",
+            json={"message": "What is Cogsdale?", "source": "online"},
+        ).status_code
+        == 503
+    )
+
+
+def test_online_search_and_foundry_answer(
+    settings: Settings,
+) -> None:
+    online_settings = settings.model_copy(
+        update={
+            "azure_ai_search_endpoint": "https://search.example",
+            "azure_ai_search_index": "documents",
+            "azure_ai_foundry_endpoint": "https://foundry.example",
+            "azure_ai_foundry_deployment": "phi-4-mini",
+        }
+    )
+    app = create_app(settings=online_settings)
+    source = {
+        "document_id": 7,
+        "chunk_id": 11,
+        "name": "PUBLIC-cogsdale-overview.md",
+        "relative_path": "PUBLIC-cogsdale-overview.md",
+        "location": "section 2",
+        "text": "Cogsdale CSM supports utility billing services.",
+        "extraction": "native",
+        "source_url": "https://cogsdale.com/",
+        "retrieval": "azure-ai-search",
+        "channel": "online",
+    }
+
+    async def online_search(_: str, __: int) -> list[dict[str, object]]:
+        return [source]
+
+    async def online_generate(_: str) -> GenerationResult:
+        return GenerationResult(
+            text="Cogsdale CSM supports utility billing services. [1]",
+            prompt_tokens=30,
+            output_tokens=10,
+        )
+
+    app.state.azure_ai.search = online_search
+    app.state.azure_ai.generate = online_generate
+    with TestClient(app) as online_client:
+        search = online_client.get(
+            "/api/search",
+            params={"q": "Cogsdale utility billing", "source": "online"},
+        ).json()
+        answer = online_client.post(
+            "/api/chat",
+            json={
+                "message": "What utility billing services does Cogsdale support?",
+                "source": "online",
+            },
+        ).json()
+
+    assert search["source"] == "online"
+    assert search["results"][0]["channel"] == "online"
+    assert answer["state"] == "answered"
+    assert answer["model"] == "azure-foundry:phi-4-mini"
+    assert answer["citations"][0]["name"] == "PUBLIC-cogsdale-overview.md"
+
+
+def test_online_chat_uses_extractive_fallback_when_foundry_is_limited(
+    settings: Settings,
+) -> None:
+    online_settings = settings.model_copy(
+        update={
+            "azure_ai_search_endpoint": "https://search.example",
+            "azure_ai_search_index": "documents",
+            "azure_ai_foundry_endpoint": "https://foundry.example",
+            "azure_ai_foundry_deployment": "phi-4-mini",
+        }
+    )
+    app = create_app(settings=online_settings)
+    source = {
+        "document_id": 7,
+        "chunk_id": 11,
+        "name": "PUBLIC-cogsdale-overview.md",
+        "relative_path": "PUBLIC-cogsdale-overview.md",
+        "location": "section 2",
+        "text": "Cogsdale CSM supports utility billing services.",
+        "extraction": "native",
+        "source_url": "https://cogsdale.com/",
+        "retrieval": "azure-ai-search",
+        "channel": "online",
+    }
+
+    async def online_search(_: str, __: int) -> list[dict[str, object]]:
+        return [source]
+
+    async def limited_generation(_: str) -> GenerationResult:
+        raise httpx.HTTPStatusError(
+            "rate limited",
+            request=httpx.Request("POST", "https://foundry.example"),
+            response=httpx.Response(429),
+        )
+
+    app.state.azure_ai.search = online_search
+    app.state.azure_ai.generate = limited_generation
+    with TestClient(app) as online_client:
+        answer = online_client.post(
+            "/api/chat",
+            json={"message": "Tell me about Cogsdale", "source": "online"},
+        ).json()
+
+    assert answer["state"] == "answered"
+    assert answer["model"] == "azure-ai-search:extractive-fallback"
+    assert answer["citations"][0]["name"] == "PUBLIC-cogsdale-overview.md"
+    assert "Azure AI Foundry is temporarily unavailable" in answer["notice"]
+
+
+def test_online_chat_uses_extractive_fallback_for_grounded_model_refusal(
+    settings: Settings,
+) -> None:
+    online_settings = settings.model_copy(
+        update={
+            "azure_ai_search_endpoint": "https://search.example",
+            "azure_ai_search_index": "documents",
+            "azure_ai_foundry_endpoint": "https://foundry.example",
+            "azure_ai_foundry_deployment": "phi-4-mini",
+        }
+    )
+    app = create_app(settings=online_settings)
+    source = {
+        "document_id": 7,
+        "chunk_id": 11,
+        "name": "PUBLIC-cogsdale-overview.md",
+        "relative_path": "PUBLIC-cogsdale-overview.md",
+        "location": "section 2",
+        "text": "Cogsdale CSM supports utility billing services.",
+        "extraction": "native",
+        "source_url": "https://cogsdale.com/",
+        "retrieval": "azure-ai-search",
+        "channel": "online",
+    }
+
+    async def online_search(_: str, __: int) -> list[dict[str, object]]:
+        return [source]
+
+    async def model_refusal(_: str) -> GenerationResult:
+        return GenerationResult(
+            text=UNSUPPORTED_ANSWER,
+            prompt_tokens=30,
+            output_tokens=10,
+        )
+
+    app.state.azure_ai.search = online_search
+    app.state.azure_ai.generate = model_refusal
+    with TestClient(app) as online_client:
+        answer = online_client.post(
+            "/api/chat",
+            json={
+                "message": "What utility billing services does Cogsdale support?",
+                "source": "online",
+            },
+        ).json()
+        unrelated = online_client.post(
+            "/api/chat",
+            json={
+                "message": "What repair services are available?",
+                "source": "online",
+            },
+        ).json()
+
+    assert answer["state"] == "answered"
+    assert answer["model"] == "azure-ai-search:extractive-fallback"
+    assert answer["citations"]
+    assert unrelated["state"] == "insufficient-evidence"
+    assert unrelated["text"] == UNSUPPORTED_ANSWER
 
 
 def test_model_missing_keeps_sources(
@@ -303,14 +487,21 @@ def test_read_only_demo_does_not_persist_user_activity(
     with TestClient(app) as demo_client:
         demo_client.post("/api/scan")
         assert demo_client.get("/api/deployment").json() == {
-            "read_only_demo": True
+            "read_only_demo": True,
+            "online_available": False,
+            "online_model": "",
         }
         answer = demo_client.post(
+            "/api/chat", json={"message": "What do returns require?"}
+        ).json()
+        cached = demo_client.post(
             "/api/chat", json={"message": "What do returns require?"}
         ).json()
 
         assert answer["state"] == "answered"
         assert answer["history_id"] == 0
+        assert cached["cached"] is True
+        assert cached["history_id"] == 0
         assert demo_client.get("/api/history").json() == []
         assert demo_client.delete("/api/history").status_code == 403
         assert (

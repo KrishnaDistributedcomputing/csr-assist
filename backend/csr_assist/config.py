@@ -51,6 +51,12 @@ class Settings(BaseSettings):
     inference_timeout: int = Field(default=300, ge=5, le=600)
     allowed_embed_origins: str = "http://localhost:8080"
     read_only_demo: bool = False
+    azure_ai_search_endpoint: str = ""
+    azure_ai_search_index: str = "csr-assist-documents"
+    azure_ai_foundry_endpoint: str = ""
+    azure_ai_foundry_deployment: str = ""
+    azure_ai_identity_client_id: str = ""
+    azure_ai_timeout: int = Field(default=60, ge=5, le=180)
 
     def ensure_directories(self) -> None:
         """Create required writable data directories."""

@@ -75,7 +75,7 @@ FACT_CATEGORY_PATTERNS = {
         re.IGNORECASE,
     ),
 }
-ANSWER_CACHE_VERSION = 4
+ANSWER_CACHE_VERSION = 5
 
 
 def query_terms(query: str) -> list[str]:
