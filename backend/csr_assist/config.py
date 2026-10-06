@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     max_file_size: int = Field(default=52_428_800, gt=0)
     inference_timeout: int = Field(default=300, ge=5, le=600)
     allowed_embed_origins: str = "http://localhost:8080"
+    read_only_demo: bool = False
 
     def ensure_directories(self) -> None:
         """Create required writable data directories."""

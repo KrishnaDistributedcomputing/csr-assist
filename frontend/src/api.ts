@@ -1,5 +1,6 @@
 import type {
   ChatResponse,
+  DeploymentInfo,
   DocumentRecord,
   HistoryEntry,
   ModelRecord,
@@ -18,6 +19,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  deployment: () => request<DeploymentInfo>("/deployment"),
   documents: () => request<DocumentRecord[]>("/documents"),
   models: () => request<ModelRecord[]>("/models"),
   scanStatus: () => request<ScanStatus>("/scan/status"),

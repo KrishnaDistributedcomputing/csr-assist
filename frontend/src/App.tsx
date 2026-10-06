@@ -26,6 +26,7 @@ import {
 import { api } from "./api";
 import type {
   ChatResponse,
+  DeploymentInfo,
   DocumentRecord,
   HistoryEntry,
   ModelRecord,
@@ -67,6 +68,9 @@ export default function App() {
   const [dark, setDark] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(widget);
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
+  const [deployment, setDeployment] = useState<DeploymentInfo>({
+    read_only_demo: false
+  });
   const [models, setModels] = useState<ModelRecord[]>([]);
   const [scan, setScan] = useState<ScanStatus | null>(null);
   const [query, setQuery] = useState("");
@@ -99,6 +103,7 @@ export default function App() {
   async function refresh() {
     try {
       await Promise.all([
+        api.deployment().then(setDeployment),
         api.documents().then(setDocuments),
         api.scanStatus().then(setScan)
       ]);
@@ -377,6 +382,7 @@ export default function App() {
                   <RefreshCw size={15} /> Clear
                 </button>
               </div>
+              {!deployment.read_only_demo && answer.history_id > 0 && (
               <div className="feedback-controls" aria-label="Rate this response">
                 <span>
                   {feedbackRating
@@ -418,6 +424,7 @@ export default function App() {
                   <ThumbsDown size={15} />
                 </button>
               </div>
+              )}
             </article>
           )}
         </div>
@@ -426,7 +433,11 @@ export default function App() {
             <div className="history-heading">
               <div>
                 <strong>Past queries</strong>
-                <span>Stored only in the local database</span>
+                <span>
+                  {deployment.read_only_demo
+                    ? "History is disabled in the public demo"
+                    : "Stored only in the local database"}
+                </span>
               </div>
               {history.length > 0 && (
                 <button
@@ -443,7 +454,11 @@ export default function App() {
               <div className="empty history-empty">
                 <RefreshCw size={26} />
                 <strong>No history yet</strong>
-                <span>Searches and Mira questions will appear here.</span>
+                <span>
+                  {deployment.read_only_demo
+                    ? "Public demo questions are not stored."
+                    : "Searches and Mira questions will appear here."}
+                </span>
               </div>
             )}
             {history.map((entry) => (
@@ -497,10 +512,20 @@ export default function App() {
       <header className="topbar">
         <div className="brand">
           <div className="brand-mark"><FileSearch /></div>
-          <div><strong>CSR Assist</strong><span>Private knowledge workspace</span></div>
+          <div>
+            <strong>CSR Assist</strong>
+            <span>
+              {deployment.read_only_demo
+                ? "Public read-only demo"
+                : "Private knowledge workspace"}
+            </span>
+          </div>
         </div>
         <div className="top-actions">
-          <span className="local-pill"><Check size={14} /> Local only</span>
+          <span className="local-pill">
+            <Check size={14} />
+            {deployment.read_only_demo ? "Sample data only" : "Local only"}
+          </span>
           <button
             className="icon-button"
             aria-label="Toggle dark mode"
@@ -516,8 +541,16 @@ export default function App() {
           <div className="workspace-heading">
             <div>
               <p className="eyebrow">Document workspace</p>
-              <h1>Find answers in your local knowledge</h1>
-              <p>Search, review, and cite documents without sending data anywhere.</p>
+              <h1>
+                {deployment.read_only_demo
+                  ? "Explore grounded answers from sample content"
+                  : "Find answers in your local knowledge"}
+              </h1>
+              <p>
+                {deployment.read_only_demo
+                  ? "Search, review, and cite the bundled demonstration policy."
+                  : "Search, review, and cite documents without sending data anywhere."}
+              </p>
             </div>
             <div className="workspace-actions">
               <input
@@ -526,8 +559,18 @@ export default function App() {
                 hidden
                 onChange={(event) => void handleUpload(event.target.files?.[0])}
               />
-              <button className="secondary" onClick={() => fileInput.current?.click()}>
-                <Upload size={17} /> Upload
+              <button
+                className="secondary"
+                onClick={() => fileInput.current?.click()}
+                disabled={deployment.read_only_demo}
+                title={
+                  deployment.read_only_demo
+                    ? "Uploads are disabled in the public demo"
+                    : undefined
+                }
+              >
+                <Upload size={17} />
+                {deployment.read_only_demo ? "Uploads disabled" : "Upload"}
               </button>
               <button className="primary" onClick={() => void handleScan()} disabled={busy}>
                 <RefreshCw size={17} className={scan?.state === "running" ? "spin" : ""} />
@@ -592,7 +635,11 @@ export default function App() {
                   <div className="empty">
                     <FileSearch size={30} />
                     <strong>No documents indexed</strong>
-                    <span>Upload a file or scan the mounted document folder.</span>
+                    <span>
+                      {deployment.read_only_demo
+                        ? "The bundled sample is being prepared."
+                        : "Upload a file or scan the mounted document folder."}
+                    </span>
                   </div>
                 )}
                 {documents.map((document) => (

@@ -9,6 +9,8 @@ beforeEach(() => {
       const url = String(input);
       const value = url.includes("/models")
         ? []
+        : url.includes("/deployment")
+          ? { read_only_demo: false }
         : url.includes("/usage")
           ? {
               totals: {
@@ -85,6 +87,8 @@ test("shows document search progress while the request is pending", async () => 
           corpus_revision: 1,
           feedback: { total: 0, good: 0, bad: 0 }
         }
+      : url.includes("/deployment")
+        ? { read_only_demo: false }
       : url.includes("/scan/status")
         ? { state: "idle", id: "", discovered: 0, processed: 0, unchanged: 0, removed: 0, errors: 0 }
         : [];

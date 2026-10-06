@@ -2,7 +2,7 @@
 title: CSR Assist
 description: Private local document search and customer-service assistant powered by Ollama
 author: CSR Assist team
-ms.date: 2026-10-05
+ms.date: 2026-10-06
 ms.topic: overview
 ---
 
@@ -44,6 +44,25 @@ docker compose ps
 
 Open <http://localhost:8080>. The sample document is clearly labelled and is not
 a real policy.
+
+## Public Azure demo
+
+The sample-only deployment is available at
+<https://ca-csr-assist-demo.salmondesert-76e2a623.westus2.azurecontainerapps.io>.
+It runs as a scale-to-zero Azure Container App in West US 2.
+
+The public deployment sets `CSR_READ_ONLY_DEMO=true`. In this mode:
+
+* Only the bundled `SAMPLE-support-policy.md` file is indexed
+* Uploads and administrative mutations return HTTP 403
+* Search and chat history is not stored or exposed
+* Feedback cannot change shared source rankings
+* The interface identifies itself as a public read-only demo
+* Fast cited answers remain available without provisioning an Ollama model
+
+The first request after an idle period can take longer while Azure starts a
+replica. Use the local Docker deployment for private documents, persistent
+history, feedback, uploads, and local model generation.
 
 ## Persistent volumes
 

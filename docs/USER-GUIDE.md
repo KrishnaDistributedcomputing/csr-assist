@@ -2,7 +2,7 @@
 title: CSR Assist User Guide
 description: Guide to document search, Mira answers, feedback, history, analytics, and administration
 author: CSR Assist team
-ms.date: 2026-10-05
+ms.date: 2026-10-06
 ms.topic: how-to
 ---
 
@@ -21,6 +21,13 @@ before secondary model, history, and analytics data.
 
 Search progress reports cache, key-fact, full-excerpt, ranking, and citation
 phases while work is pending.
+
+### Public demo behavior
+
+The hosted Azure demo uses only the bundled sample policy. It does not accept
+uploads, persist search or chat history, accept feedback, or allow
+administrative changes. A scale-from-zero cold start can delay the first
+request after an idle period.
 
 ## Ask Mira
 

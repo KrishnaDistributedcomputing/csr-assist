@@ -59,6 +59,10 @@ export interface ScanStatus {
   errors: number;
 }
 
+export interface DeploymentInfo {
+  read_only_demo: boolean;
+}
+
 export interface HistoryEntry {
   id: number;
   kind: "search" | "chat";

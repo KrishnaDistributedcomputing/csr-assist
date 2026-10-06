@@ -353,8 +353,20 @@ def create_app(
     async def list_documents() -> list[dict[str, Any]]:
         return database.list_documents()
 
+    @app.get("/api/deployment")
+    async def deployment() -> dict[str, bool]:
+        return {"read_only_demo": runtime.read_only_demo}
+
+    def require_demo_mutation_access() -> None:
+        if runtime.read_only_demo:
+            raise HTTPException(
+                status_code=403,
+                detail="This public demo is read-only",
+            )
+
     @app.post("/api/documents/upload", status_code=status.HTTP_201_CREATED)
     async def upload_document(file: UploadFile = File(...)) -> dict[str, str]:
+        require_demo_mutation_access()
         try:
             filename = validate_filename(file.filename or "")
         except ValueError as exc:
@@ -405,15 +417,19 @@ def create_app(
             min(max(limit, 1), 20),
             semantic_when_keyword_exists=False,
         )
-        database.add_history("search", q, sources=results)
+        if not runtime.read_only_demo:
+            database.add_history("search", q, sources=results)
         return {"query": q, "results": results}
 
     @app.get("/api/history")
     async def history(limit: int = 100) -> list[dict[str, Any]]:
+        if runtime.read_only_demo:
+            return []
         return database.list_history(limit)
 
     @app.delete("/api/history")
     async def clear_history() -> dict[str, int]:
+        require_demo_mutation_access()
         return {"deleted": database.clear_history()}
 
     @app.get("/api/usage")
@@ -422,6 +438,7 @@ def create_app(
 
     @app.post("/api/feedback")
     async def feedback(request: ResponseFeedback) -> dict[str, int]:
+        require_demo_mutation_access()
         try:
             return database.record_feedback(
                 request.history_id,
@@ -447,6 +464,7 @@ def create_app(
 
     @app.put("/api/models/active")
     async def activate_model(selection: ModelSelection) -> dict[str, str]:
+        require_demo_mutation_access()
         saved = config.read()
         approved = {model["id"] for model in saved["allowed_models"]}
         if selection.model not in approved:
@@ -464,6 +482,7 @@ def create_app(
 
     @app.put("/api/settings")
     async def update_settings(update: SettingsUpdate) -> dict[str, Any]:
+        require_demo_mutation_access()
         try:
             return config.write(update.model_dump())
         except ValueError as exc:
@@ -492,16 +511,18 @@ def create_app(
             history_sources: list[dict[str, Any]] | None = None,
         ) -> dict[str, Any]:
             response["cached"] = False
-            history_id = database.add_history(
-                "chat",
-                request.message,
-                response_text=response["text"],
-                response_state=response["state"],
-                model=response["model"],
-                sources=history_sources
-                if history_sources is not None
-                else response["sources"],
-            )
+            history_id = 0
+            if not runtime.read_only_demo:
+                history_id = database.add_history(
+                    "chat",
+                    request.message,
+                    response_text=response["text"],
+                    response_state=response["state"],
+                    model=response["model"],
+                    sources=history_sources
+                    if history_sources is not None
+                    else response["sources"],
+                )
             response["history_id"] = history_id
             database.record_usage(
                 request_kind="chat",

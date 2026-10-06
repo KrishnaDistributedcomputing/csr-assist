@@ -9,7 +9,7 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from csr_assist.api import UNSUPPORTED_ANSWER
+from csr_assist.api import UNSUPPORTED_ANSWER, create_app
 from csr_assist.config import Settings
 from csr_assist.ollama import GenerationResult
 
@@ -280,6 +280,61 @@ def test_upload_validation(client: TestClient) -> None:
         files={"file": ("payload.exe", b"unsafe", "application/octet-stream")},
     )
     assert response.status_code == 400
+
+
+def test_read_only_demo_does_not_persist_user_activity(
+    settings: Settings,
+) -> None:
+    demo_settings = settings.model_copy(update={"read_only_demo": True})
+    app = create_app(settings=demo_settings)
+
+    async def no_models() -> set[str]:
+        return set()
+
+    async def no_embeddings(_: list[str]) -> list[list[float]]:
+        return []
+
+    app.state.ollama.installed_models = no_models
+    app.state.ollama.embed = no_embeddings
+    (settings.documents_dir / "policy.txt").write_text(
+        "Returns require proof of purchase.", encoding="utf-8"
+    )
+
+    with TestClient(app) as demo_client:
+        demo_client.post("/api/scan")
+        assert demo_client.get("/api/deployment").json() == {
+            "read_only_demo": True
+        }
+        answer = demo_client.post(
+            "/api/chat", json={"message": "What do returns require?"}
+        ).json()
+
+        assert answer["state"] == "answered"
+        assert answer["history_id"] == 0
+        assert demo_client.get("/api/history").json() == []
+        assert demo_client.delete("/api/history").status_code == 403
+        assert (
+            demo_client.post(
+                "/api/documents/upload",
+                files={"file": ("notes.txt", b"private", "text/plain")},
+            ).status_code
+            == 403
+        )
+        assert (
+            demo_client.post(
+                "/api/feedback",
+                json={"history_id": 1, "rating": "good"},
+            ).status_code
+            == 403
+        )
+        assert demo_client.put(
+            "/api/settings",
+            json={
+                "active_model": "phi3:mini",
+                "allowed_models": [],
+                "persona": "Changed",
+            },
+        ).status_code == 403
 
 
 def test_search_and_chat_are_persisted(

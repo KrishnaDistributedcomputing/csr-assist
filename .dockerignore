@@ -10,7 +10,11 @@ __pycache__/
 .pytest_cache/
 .venv/
 .data/
+data/
 .env*
+*.tsbuildinfo
+vite.config.js
+vite.config.d.ts
 *.log*
 coverage/
 README.md

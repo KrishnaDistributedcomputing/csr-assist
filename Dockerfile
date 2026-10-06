@@ -35,12 +35,18 @@ RUN python -m venv /opt/csr-assist/venv \
        -r requirements.lock
 
 COPY backend ./backend
+COPY sample-documents ./sample-documents
 COPY --from=frontend /src/backend/csr_assist/static ./backend/csr_assist/static
 COPY docker/supervisord.conf /etc/supervisor/conf.d/csr-assist.conf
 COPY docker/entrypoint.sh /usr/local/bin/csr-assist-entrypoint
+COPY docker/demo-entrypoint.sh /usr/local/bin/csr-assist-demo-entrypoint
 
-RUN chmod 0755 /usr/local/bin/csr-assist-entrypoint \
-    && sed -i 's/\r$//' /usr/local/bin/csr-assist-entrypoint \
+RUN chmod 0755 \
+       /usr/local/bin/csr-assist-entrypoint \
+       /usr/local/bin/csr-assist-demo-entrypoint \
+    && sed -i 's/\r$//' \
+       /usr/local/bin/csr-assist-entrypoint \
+       /usr/local/bin/csr-assist-demo-entrypoint \
     && mkdir -p /data/documents /data/index /data/config /data/models \
     && chown -R csrassist:csrassist /opt/csr-assist /data /home/csrassist
 
