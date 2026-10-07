@@ -170,13 +170,15 @@ Use the assistant navigation to switch between **Chat** and **History**:
 1. Open **Assistant** to ask a question or start from the prompt gallery.
    Chat now uses the full workspace width so answers, progress, citations, and
    the composer remain visible without opening a separate drawer.
-2. Choose **Document prompts** for three source-aware tasks or **All document
-   prompts** for the complete gallery. **Browse document prompt gallery** also
+2. Choose **Suggested** for three source-aware tasks or **All prompts** for the
+   complete gallery. The welcome panel highlights grounded answers, source
+   citations, and the active data boundary. **Browse document prompt gallery** also
    opens the complete list.
 3. Select a prompt to place its text in the large composer at the bottom of
    the assistant. You can review or edit the text before sending it.
 4. Select the send button to ask Mira. The button remains unavailable until
-   the composer contains text.
+   the composer contains text. You can also use **Ctrl+Enter** on Windows and
+   Linux or **Command+Enter** on macOS.
 
 Use **Sources** for document search, indexed-data details, search results, and
 exact excerpt previews. Keeping those controls in a separate workspace tab

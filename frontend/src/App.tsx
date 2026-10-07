@@ -895,36 +895,52 @@ export default function App() {
           {!answer && (
             <div className="mira-intro">
               <div className="mira-greeting">
-                <Sparkles size={18} />
-                <div>
-                  <strong>Hello! How can I help?</strong>
+                <div className="mira-greeting-icon">
+                  <Sparkles size={22} />
+                </div>
+                <div className="mira-greeting-copy">
+                  <span className="mira-welcome-kicker">Ready when you are</span>
+                  <h2>What can I help you find?</h2>
                   <p>
-                    {dataSource === "online"
-                      ? "I’ll answer from approved Azure sources and show my citations."
-                      : "I’ll answer from your local documents and show my citations."}
+                    Ask a question, create a customer-ready response, or explore
+                    the guidance in your {dataSource === "online" ? "approved Azure sources" : "local documents"}.
                   </p>
+                  <div className="mira-capabilities" aria-label="Assistant capabilities">
+                    <span><Check size={12} /> Grounded answers</span>
+                    <span><FileSearch size={12} /> Source citations</span>
+                    <span>
+                      {dataSource === "online" ? <Cloud size={12} /> : <HardDrive size={12} />}
+                      {dataSource === "online" ? "Approved sources" : "Stays local"}
+                    </span>
+                  </div>
                 </div>
               </div>
-              <div className="prompt-tabs" role="tablist" aria-label="Prompt gallery">
-                <button
-                  role="tab"
-                  aria-selected={promptView === "suggested"}
-                  className={promptView === "suggested" ? "active" : ""}
-                  onClick={() => setPromptView("suggested")}
-                >
-                  Document prompts
-                </button>
-                <button
-                  role="tab"
-                  aria-selected={promptView === "all"}
-                  className={promptView === "all" ? "active" : ""}
-                  onClick={() => setPromptView("all")}
-                >
-                  All document prompts
-                </button>
+              <div className="prompt-section-heading">
+                <div>
+                  <strong>Try a starting point</strong>
+                  <span>Select a task, then personalize it before sending.</span>
+                </div>
+                <div className="prompt-tabs" role="tablist" aria-label="Prompt gallery">
+                  <button
+                    role="tab"
+                    aria-selected={promptView === "suggested"}
+                    className={promptView === "suggested" ? "active" : ""}
+                    onClick={() => setPromptView("suggested")}
+                  >
+                    Suggested
+                  </button>
+                  <button
+                    role="tab"
+                    aria-selected={promptView === "all"}
+                    className={promptView === "all" ? "active" : ""}
+                    onClick={() => setPromptView("all")}
+                  >
+                    All prompts
+                  </button>
+                </div>
               </div>
               <div className="prompt-list">
-                {visiblePrompts.map((prompt) => (
+                {visiblePrompts.map((prompt, index) => (
                   <button
                     key={prompt}
                     onClick={() => {
@@ -933,8 +949,14 @@ export default function App() {
                     }}
                     className="prompt"
                   >
-                    <span>{prompt}</span>
-                    <Send size={14} />
+                    <span className="prompt-icon">
+                      {index === 0 ? <FileSearch size={17} /> : index === 1 ? <Bot size={17} /> : <Check size={17} />}
+                    </span>
+                    <span className="prompt-copy">
+                      <small>{index === 0 ? "Understand" : index === 1 ? "Respond" : "Review"}</small>
+                      <strong>{prompt}</strong>
+                    </span>
+                    <Send size={15} />
                   </button>
                 ))}
               </div>
@@ -1167,13 +1189,24 @@ export default function App() {
       {assistantTab === "chat" && (
         <>
           <form className="chat-form" onSubmit={handleChat} data-tour="composer">
+            <div className="composer-heading">
+              <label htmlFor="mira-message">Ask Mira</label>
+              <span>{dataSource === "online" ? "Approved Azure sources" : "Your local document index"}</span>
+            </div>
             <textarea
+              id="mira-message"
               value={message}
               onChange={(event) => setMessage(event.target.value)}
+              onKeyDown={(event) => {
+                if ((event.ctrlKey || event.metaKey) && event.key === "Enter") {
+                  event.preventDefault();
+                  event.currentTarget.form?.requestSubmit();
+                }
+              }}
               placeholder={
                 dataSource === "online"
-                  ? "Ask Mira about approved Azure sources…"
-                  : "Ask Mira about your local documents…"
+                  ? "What would you like to know from the approved Azure sources?"
+                  : "What would you like to know from your local documents?"
               }
               aria-label="Message Mira"
               rows={3}
@@ -1184,7 +1217,9 @@ export default function App() {
               disabled={chatPending || !message.trim()}
             >
               <Send size={19} />
+              <span>Send question</span>
             </button>
+            <small className="composer-shortcut">Ctrl/⌘ + Enter to send</small>
           </form>
           <p className="accuracy-note">
             Citations support review but do not guarantee model accuracy.
@@ -1273,7 +1308,10 @@ export default function App() {
       </header>
       {error && <div className="error-banner" role="alert">{error}</div>}
       <div className="workspace">
-        <section className="documents-pane" id="workspace-content">
+        <section
+          className={`documents-pane ${workspaceTab === "chat" ? "chat-workspace" : ""}`}
+          id="workspace-content"
+        >
           <div className="workspace-heading">
             <div>
               <p className="eyebrow">
