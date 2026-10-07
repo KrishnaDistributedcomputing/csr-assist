@@ -88,7 +88,7 @@ const technicalLayers = [
   {
     concern: "Generation",
     docker: "Per-request approved Ollama model installed in /data/models",
-    azure: "Per-request approved Azure AI Foundry deployment",
+    azure: "Foundry for Online mode; six bundled Ollama models for the Docker preview",
   },
   {
     concern: "Identity",
@@ -98,7 +98,7 @@ const technicalLayers = [
   {
     concern: "Persistence",
     docker: "Documents, SQLite state, configuration, and model volumes",
-    azure: "Azure Search index plus ephemeral public-demo application storage",
+    azure: "Azure Search index, ephemeral demo state, and immutable bundled model files",
   },
   {
     concern: "Data boundary",
@@ -111,6 +111,7 @@ const configuration = [
   ["CSR_DOCUMENTS_DIR", "Managed source-document root", "/data/documents"],
   ["CSR_INDEX_DIR", "SQLite indexes, cache, history, and usage", "/data/index"],
   ["CSR_MODELS_DIR", "Ollama manifests and model blobs", "/data/models"],
+  ["OLLAMA_MODELS", "Ollama runtime model path", "Azure demo: /opt/csr-assist/model-seed"],
   ["CSR_AZURE_AI_SEARCH_ENDPOINT", "Approved Azure AI Search service", "Required online"],
   ["CSR_AZURE_AI_SEARCH_INDEX", "Search index containing approved chunks", "csr-assist-documents"],
   ["CSR_AZURE_AI_FOUNDRY_ENDPOINT", "Foundry inference resource", "Required online"],
@@ -183,7 +184,8 @@ export default function ArchitecturePanel({
             Container Apps queries Azure AI Search, builds a bounded grounded
             prompt, and invokes the selected Foundry deployment. Deployment
             identifiers are server-allowlisted; arbitrary client model names
-            are rejected.
+            are rejected. The public demo also includes six Ollama models for
+            its isolated Docker preview on 2 vCPU and 4 GiB.
           </p>
           <code>Browser → Container App → AI Search → Foundry → cited answer</code>
         </article>
@@ -384,6 +386,7 @@ export default function ArchitecturePanel({
             <div><dt>Index</dt><dd>/data/index</dd></div>
             <div><dt>Settings</dt><dd>/data/config</dd></div>
             <div><dt>Models</dt><dd>/data/models</dd></div>
+            <div><dt>Azure demo models</dt><dd>/opt/csr-assist/model-seed</dd></div>
           </dl>
         </article>
         <article>

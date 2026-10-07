@@ -77,6 +77,8 @@ Browser
 Azure Container Apps
   |-- FastAPI API and React static assets
   |-- local application state for the public demo
+  |-- six bundled Ollama models for the Docker preview
+  |     stored under /opt/csr-assist/model-seed
   |
   | managed identity + Search data-plane RBAC
   v
@@ -100,7 +102,7 @@ The read-only public demo replaces the normal mode badge with an
 changes the active source in the same deployed application:
 
 * Docker selects the demo's bundled offline sample index and local extractive
-  path.
+  path. It can also run one of the six bundled Ollama models.
 * Azure selects the configured Azure AI Search and Foundry path.
 * Azure remains disabled when the deployment API reports that Online mode is
   unavailable.
@@ -110,7 +112,10 @@ changes the active source in the same deployed application:
 
 The Docker preview does not provision, connect to, or emulate a customer's
 on-premises Docker host. It demonstrates the Offline request path with public
-sample content inside the Container App.
+sample content inside the Container App. The Azure image bundles Phi-3 Mini,
+Llama 3.2 1B, Llama 3.2 3B, Qwen 2.5 1.5B, Gemma 3 1B, and SmolLM2 1.7B for
+this preview. These models run on the Container App CPU and do not call Azure
+AI Foundry.
 
 Outside read-only demo mode, the header shows the current Offline or Online
 boundary as a status pill. Source selection remains available in the Answers
@@ -170,6 +175,14 @@ The editable local allowlist accepts only recognized model identifier families
 for the configured provider. It rejects identifiers containing URL or path
 syntax. Installation and allowlisting are independent: an allowed model can
 still be unavailable because its Ollama files have not been provisioned.
+
+The public Azure demo provisions all six approved models in the immutable
+container image. The Container App uses 2 vCPU and 4 GiB memory, sets
+`OLLAMA_MODELS=/opt/csr-assist/model-seed`, scales from zero, and allows one
+replica. Bundling the models avoids runtime downloads but increases the image
+to about 9 GB. The first request after scale-to-zero can wait for the platform
+to pull the image and start Ollama. CPU generation can also take longer than
+managed Foundry inference, especially for the larger models.
 
 ### Azure deployment routing
 
@@ -383,7 +396,9 @@ documents. It does not use those directories as customer storage. Read-only
 demo mode rejects uploads, feedback, model activation, settings updates, and
 history deletion. It does not persist user search or chat history, although
 ephemeral usage and cache records can exist for the lifetime of the running demo
-instance.
+instance. Ollama manifests and blobs are immutable image content under
+`/opt/csr-assist/model-seed`; they are not written to the ephemeral
+`/data/models` volume.
 
 ## Runtime configuration
 
@@ -408,6 +423,11 @@ instance.
 | `CSR_AZURE_AI_FOUNDRY_DEPLOYMENTS` | Empty | Future additional comma-separated Foundry deployment identifiers that operators have provisioned and allowlisted |
 | `CSR_AZURE_AI_IDENTITY_CLIENT_ID` | Empty | Client ID used to select a user-assigned managed identity |
 | `CSR_AZURE_AI_TIMEOUT` | `60` | Search and managed-identity timeout in seconds, constrained to 5 through 180; Foundry generation is additionally capped at 10 seconds |
+
+The container startup process also reads `OLLAMA_MODELS`. Local Docker defaults
+to `/data/models`. The public Azure deployment overrides it with
+`/opt/csr-assist/model-seed` so the declared `/data/models` volume does not hide
+the model files embedded in the image.
 
 Compose also uses `CSR_ASSIST_PORT`, defaulting to `8080`, to choose the
 loopback host port. It is Compose interpolation, not a FastAPI `Settings` field.

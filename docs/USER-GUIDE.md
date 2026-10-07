@@ -89,6 +89,8 @@ or regulated information. The demo does not accept uploads, persist search or
 chat history, accept feedback, or allow model or settings changes. Its runtime
 documents, indexes, configuration, and model directories are ephemeral. A
 scale-from-zero cold start can delay the first request after an idle period.
+The public image includes about 9 GB of model data, so the initial image pull
+can take several minutes on a new host.
 
 Use the public-demo controls to preview each environment:
 
@@ -99,10 +101,23 @@ Use the public-demo controls to preview each environment:
 3. Select an available model, or use **Fast local index (no LLM)** in the
    Docker preview, then ask your question.
 
-The Docker model list contains the approved Ollama models. Only models already
-installed in Docker are enabled; approved models that are not installed appear
-as **Setup required** and cannot be selected. **Fast local index (no LLM)**
-returns a cited extractive answer without calling an LLM.
+The hosted demo bundles these approved Ollama models for the Docker preview:
+
+* Phi-3 Mini
+* Llama 3.2 1B
+* Llama 3.2 3B
+* Qwen 2.5 1.5B
+* Gemma 3 1B
+* SmolLM2 1.7B
+
+All six run on the Container App CPU and are enabled in the selector. They do
+not call Azure AI Foundry. CPU generation can take longer for the larger
+models. **Fast local index (no LLM)** remains the quickest option and returns a
+cited extractive answer without calling an LLM.
+
+Private Docker deployments follow the same availability rule: only installed
+models are enabled. Approved models that are not installed appear as **Setup
+required** and cannot be selected.
 
 The Azure model list contains only Foundry deployments configured and
 allowlisted by the server. The current public Azure deployment exposes
@@ -192,13 +207,15 @@ billing basis:
 
 | Service | Resource | SKU and billing |
 |---|---|---|
-| Azure Container Apps | `ca-csr-assist-demo` | Consumption; billed for vCPU, memory, and requests |
+| Azure Container Apps | `ca-csr-assist-demo` | Consumption with 2 vCPU and 4 GiB; billed for vCPU, memory, and requests |
 | Azure AI Search | `srch-csr-assist-kvenk26` | Free SKU; billed by provisioned capacity, not tokens |
 | Azure AI Foundry | `aif-csr-assist-kvenk26` | AIServices S0; model input and output token billing |
 
 The Docker $0 amount covers provider tokens only. It excludes hardware,
 electricity, hosting, support, and operations. Container Apps and Azure AI
-Search charges are also separate from the Foundry token estimate.
+Search charges are also separate from the Foundry token estimate. The hosted
+Docker-preview models have no provider-token charge, but their CPU generation
+and idle-to-active startup consume Container Apps resources.
 
 > [!IMPORTANT]
 > Rates and request costs are estimates, not invoices or guarantees. Actual
