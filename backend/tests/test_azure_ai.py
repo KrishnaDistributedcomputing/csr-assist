@@ -83,12 +83,14 @@ async def test_search_and_foundry_use_managed_identity(
         "Use only [1].",
         "gpt-4o-mini",
     )
+    documents = await client.list_documents()
 
     assert sources[0]["channel"] == "online"
     assert sources[0]["source_url"] == "https://cogsdale.com/"
     assert generation.text.endswith("[1]")
     assert generation.prompt_tokens == 12
     assert alternate_generation.text.endswith("[1]")
+    assert documents[0]["document_id"] == 7
     assert client.foundry_deployments == ("phi-4-mini", "gpt-4o-mini")
     assert client.foundry_timeout == 10
     assert requests[0].url.params["client_id"] == "client-id"
@@ -105,5 +107,6 @@ async def test_search_and_foundry_use_managed_identity(
     assert requests[4].url.path.endswith(
         "/openai/deployments/gpt-4o-mini/chat/completions"
     )
+    assert requests[5].headers["Authorization"] == "Bearer managed-token"
     with pytest.raises(ValueError, match="not approved"):
         await client.generate("Use only [1].", "unapproved-model")

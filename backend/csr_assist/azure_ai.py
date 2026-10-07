@@ -180,7 +180,7 @@ class AzureAIClient:
             response = await client.post(
                 url,
                 params={"api-version": SEARCH_API_VERSION},
-                headers={"Authorization": f"******"},
+                headers={"Authorization": f"Bearer {token}"},
                 json=payload,
             )
             response.raise_for_status()
