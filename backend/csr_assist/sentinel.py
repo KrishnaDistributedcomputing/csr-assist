@@ -204,7 +204,7 @@ class SentinelClient:
             f"| where isempty('{safe_name}') or ContainerAppName_s =~ "
             f"'{safe_name}' or _ResourceId has '/containerApps/{safe_name}'\n"
             "| extend SecurityMessage = tostring(coalesce("
-            "Log_s, Reason_s, Event_s, Type))\n"
+            "Log_s, Reason_s, Type))\n"
             "| summarize Events=count(), "
             "Errors=countif(SecurityMessage has_any "
             "('ERROR', 'exception', 'failed')), "
