@@ -44,19 +44,84 @@ const searchProgressMessages = [
   "Checking full document excerpts",
   "Ranking the best matches"
 ];
-const offlineChatProgressMessages = [
-  "Checking the previous-answer cache",
-  "Searching extracted key facts",
-  "Ranking retrieved sources",
-  "Preparing citations"
-];
-const onlineChatProgressMessages = [
-  "Checking approved Azure sources",
-  "Searching Azure AI Search",
-  "Reviewing grounded excerpts",
-  "Requesting Azure AI Foundry",
-  "Preparing a cited response"
-];
+
+interface ChatProgressStep {
+  title: string;
+  detail: string;
+}
+
+function buildChatProgressSteps(
+  source: "offline" | "online",
+  modelName?: string
+): ChatProgressStep[] {
+  if (source === "online") {
+    return [
+      {
+        title: "Checking the answer cache",
+        detail: "Looking for a verified answer from the current Azure index revision and model."
+      },
+      {
+        title: "Querying Azure AI Search",
+        detail: "Searching only administrator-approved Azure-indexed content."
+      },
+      {
+        title: "Selecting grounded evidence",
+        detail: "Removing weak matches and bounding the excerpts supplied for generation."
+      },
+      {
+        title: `Generating with ${modelName || "Azure AI Foundry"}`,
+        detail: "Sending the question and approved excerpts to the allowlisted Foundry deployment."
+      },
+      {
+        title: "Validating citations and final answer",
+        detail: "Checking citation markers and using a cited extractive fallback if generation is unusable."
+      }
+    ];
+  }
+  if (modelName) {
+    return [
+      {
+        title: "Checking the answer cache",
+        detail: "Looking for a verified answer for this local index revision and model."
+      },
+      {
+        title: "Searching extracted facts",
+        detail: "Using the local SQLite full-text index to find concise matching facts."
+      },
+      {
+        title: "Retrieving and ranking excerpts",
+        detail: "Comparing full document passages and selecting the strongest local evidence."
+      },
+      {
+        title: `Loading ${modelName}`,
+        detail: "Preparing the selected Ollama model inside the container. A cold model can take longer to load."
+      },
+      {
+        title: "Generating and validating the cited answer",
+        detail: "Running local CPU inference, checking citations, and falling back to cited extraction when needed."
+      }
+    ];
+  }
+  return [
+    {
+      title: "Checking the answer cache",
+      detail: "Looking for a verified answer from the current local index revision."
+    },
+    {
+      title: "Searching extracted facts",
+      detail: "Using the local SQLite full-text index to find concise matching facts."
+    },
+    {
+      title: "Retrieving and ranking excerpts",
+      detail: "Comparing full document passages and selecting the strongest local evidence."
+    },
+    {
+      title: "Composing a cited extractive answer",
+      detail: "Building the response directly from retrieved sentences without calling an LLM."
+    }
+  ];
+}
+
 const ESTIMATED_INPUT_TOKENS = 2000;
 const ESTIMATED_OUTPUT_TOKENS = 120;
 
@@ -75,6 +140,11 @@ function formatIndexedAt(value?: string) {
         dateStyle: "medium",
         timeStyle: "short"
       });
+}
+
+function formatElapsed(seconds: number) {
+  const minutes = Math.floor(seconds / 60);
+  return `${minutes}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
 const tourSteps = [
@@ -253,9 +323,10 @@ export default function App() {
   const [usageLoaded, setUsageLoaded] = useState(false);
   const [feedbackRating, setFeedbackRating] = useState<"good" | "bad" | null>(null);
   const [chatPending, setChatPending] = useState(false);
-  const [chatProgress, setChatProgress] = useState(
-    offlineChatProgressMessages[0]
-  );
+  const [chatProgressSteps, setChatProgressSteps] = useState<ChatProgressStep[]>([]);
+  const [chatProgressIndex, setChatProgressIndex] = useState(0);
+  const [chatElapsedSeconds, setChatElapsedSeconds] = useState(0);
+  const [chatProgressModel, setChatProgressModel] = useState("");
   const [searchProgress, setSearchProgress] = useState("");
   const [chatError, setChatError] = useState("");
   const [searchPending, setSearchPending] = useState(false);
@@ -535,20 +606,35 @@ export default function App() {
     if (!message.trim()) return;
     setChatPending(true);
     setAssistantTab("chat");
-    const progressMessages =
-      dataSource === "online"
-        ? onlineChatProgressMessages
-        : offlineChatProgressMessages;
-    setChatProgress(progressMessages[0]);
+    const selectedModel =
+      dataSource === "online" ? selectedOnlineModel : selectedOfflineModel;
+    const progressModel = (
+      dataSource === "online" ? deployment.online_models : models
+    ).find((model) => model.id === selectedModel)?.name ?? selectedModel;
+    const progressSteps = buildChatProgressSteps(
+      dataSource,
+      progressModel || undefined
+    );
+    setChatProgressSteps(progressSteps);
+    setChatProgressIndex(0);
+    setChatElapsedSeconds(0);
+    setChatProgressModel(
+      progressModel || (
+        dataSource === "online"
+          ? "Azure AI Foundry"
+          : "Fast local retrieval"
+      )
+    );
     let progressIndex = 0;
     const progressTimer = window.setInterval(() => {
-      progressIndex = Math.min(progressIndex + 1, progressMessages.length - 1);
-      setChatProgress(progressMessages[progressIndex]);
-    }, 700);
+      progressIndex = Math.min(progressIndex + 1, progressSteps.length - 1);
+      setChatProgressIndex(progressIndex);
+    }, 1800);
+    const elapsedTimer = window.setInterval(() => {
+      setChatElapsedSeconds((seconds) => seconds + 1);
+    }, 1000);
     setChatError("");
     try {
-      const selectedModel =
-        dataSource === "online" ? selectedOnlineModel : selectedOfflineModel;
       const response = await api.chat(
         message,
         dataSource,
@@ -568,6 +654,7 @@ export default function App() {
       );
     } finally {
       window.clearInterval(progressTimer);
+      window.clearInterval(elapsedTimer);
       setChatPending(false);
     }
   }
@@ -817,15 +904,56 @@ export default function App() {
           )}
           {chatPending && (
             <div className="chat-progress" role="status">
-              <RefreshCw className="spin" size={18} />
-              <div>
-                <strong>
-                  {dataSource === "online"
-                    ? "Mira is reviewing Azure sources"
-                    : "Mira is reviewing local sources"}
-                </strong>
-                <span>{chatProgress}</span>
+              <div className="chat-progress-heading">
+                <RefreshCw className="spin" size={18} />
+                <div>
+                  <strong>
+                    {dataSource === "online"
+                      ? "Mira is reviewing Azure sources"
+                      : "Mira is reviewing local sources"}
+                  </strong>
+                  <span>
+                    {chatProgressModel} · Elapsed {formatElapsed(chatElapsedSeconds)}
+                  </span>
+                </div>
               </div>
+              <p>{chatProgressSteps[chatProgressIndex]?.detail}</p>
+              <ol className="chat-progress-steps" aria-label="Estimated request flow">
+                {chatProgressSteps.map((step, index) => (
+                  <li
+                    key={step.title}
+                    className={
+                      index < chatProgressIndex
+                        ? "complete"
+                        : index === chatProgressIndex
+                          ? "current"
+                          : ""
+                    }
+                  >
+                    <span>
+                      {index < chatProgressIndex ? <Check size={11} /> : index + 1}
+                    </span>
+                    <div>
+                      <strong>{step.title}</strong>
+                      {index === chatProgressIndex && <small>{step.detail}</small>}
+                    </div>
+                  </li>
+                ))}
+              </ol>
+              <div className="chat-progress-boundary">
+                <strong>Data boundary</strong>
+                <span>
+                  {dataSource === "online"
+                    ? "Only the question and bounded approved excerpts are sent to the allowlisted Azure services."
+                    : chatProgressModel === "Fast local retrieval"
+                      ? "Search and answer composition stay local. No LLM is called."
+                      : "The question, retrieved excerpts, and model inference stay inside this container."}
+                </span>
+              </div>
+              <small className="chat-progress-note">
+                Stage timing is estimated because the server returns the completed answer
+                in one response. Local CPU inference and cold model loading can take a few minutes.
+              </small>
             </div>
           )}
           {chatError && (

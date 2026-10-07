@@ -371,10 +371,31 @@ select:focus-visible {
 }
 .prompt-tabs button.active { color: white; background: var(--teal); box-shadow: 0 5px 12px rgba(8, 127, 122, .18); }
 .chat-progress, .chat-error { display: flex; gap: 10px; margin-bottom: 14px; padding: 14px; border-radius: 12px; line-height: 1.4; }
-.chat-progress { align-items: center; color: var(--teal); background: var(--teal-light); }
-.chat-progress div, .chat-error { flex-direction: column; }
-.chat-progress div { display: grid; }
+.chat-progress {
+  display: grid; gap: 11px; color: var(--teal); border: 1px solid rgba(8, 127, 122, .18);
+  background: var(--teal-light);
+}
+.chat-progress-heading { display: flex; align-items: center; gap: 9px; }
+.chat-progress-heading > div { display: grid; gap: 2px; }
+.chat-progress p { margin: 0; color: var(--text); font-size: 11px; line-height: 1.5; }
 .chat-progress span, .chat-error span { color: var(--muted); font-size: 11px; }
+.chat-progress-steps { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }
+.chat-progress-steps li { display: grid; grid-template-columns: 20px 1fr; align-items: start; gap: 7px; opacity: .55; }
+.chat-progress-steps li > span {
+  display: grid; place-items: center; width: 18px; height: 18px; color: var(--muted);
+  border: 1px solid var(--border); border-radius: 50%; background: var(--surface); font-size: 8px;
+}
+.chat-progress-steps li > div { display: grid; gap: 2px; }
+.chat-progress-steps li strong { color: var(--muted); font-size: 10px; }
+.chat-progress-steps li small { color: var(--muted); font-size: 9px; line-height: 1.45; }
+.chat-progress-steps li.complete, .chat-progress-steps li.current { opacity: 1; }
+.chat-progress-steps li.complete > span { color: white; border-color: var(--teal); background: var(--teal); }
+.chat-progress-steps li.current > span { color: white; border-color: var(--teal); background: var(--teal); box-shadow: 0 0 0 3px rgba(8, 127, 122, .12); }
+.chat-progress-steps li.current strong { color: var(--text); }
+.chat-progress-boundary { display: grid; gap: 2px; padding: 8px 9px; border-radius: 8px; background: var(--surface); }
+.chat-progress-boundary strong { color: var(--text); font-size: 9px; text-transform: uppercase; letter-spacing: .05em; }
+.chat-progress-note { color: var(--muted); font-size: 9px; line-height: 1.45; }
+.chat-error { flex-direction: column; }
 .chat-error { color: #8f1e1e; background: #fee8e8; }
 .chat-error button { align-self: flex-start; padding: 0; color: inherit; border: 0; background: transparent; font-size: 11px; text-decoration: underline; }
 .prompt-list { display: grid; gap: 8px; }

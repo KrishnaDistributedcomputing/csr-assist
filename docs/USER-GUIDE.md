@@ -176,6 +176,22 @@ Use the assistant navigation to switch between **Chat** and **History**:
 4. Select the send button to ask Mira. The button remains unavailable until
    the composer contains text.
 
+While a request is pending, Mira displays an estimated behind-the-scenes flow
+instead of a single rotating label. The panel shows:
+
+* The selected local or Azure model
+* Elapsed request time
+* Cache lookup, retrieval, evidence selection, generation, and citation stages
+* An explanation for the currently estimated stage
+* The active local or Azure data boundary
+* A reminder that exact server timing is not streamed to the browser
+
+For local Ollama requests, the final stage combines CPU generation and citation
+validation. This stage can take a few minutes when the model is cold or the
+host is CPU constrained. Fast local retrieval skips model loading and
+generation. Azure progress identifies Azure AI Search, bounded evidence
+selection, Foundry generation, and citation validation.
+
 Prompts use the selected source name when you have opened evidence. Otherwise,
 they use the first indexed Offline document or the first returned Azure
 document. The gallery offers document-specific summaries, customer-ready

@@ -565,7 +565,17 @@ test("shows Azure-specific progress while Online chat is pending", async () => {
     "Mira is reviewing Azure sources"
   );
   expect(screen.getByRole("status")).toHaveTextContent(
-    "Checking approved Azure sources"
+    "Checking the answer cache"
+  );
+  expect(screen.getByRole("status")).toHaveTextContent("Querying Azure AI Search");
+  expect(screen.getByRole("status")).toHaveTextContent("Selecting grounded evidence");
+  expect(screen.getByRole("status")).toHaveTextContent("Generating with phi-4-mini");
+  expect(screen.getByRole("status")).toHaveTextContent(
+    "Validating citations and final answer"
+  );
+  expect(screen.getByRole("status")).toHaveTextContent("Elapsed 0:00");
+  expect(screen.getByRole("status")).toHaveTextContent(
+    "Only the question and bounded approved excerpts"
   );
 
   await act(async () => {
@@ -585,6 +595,89 @@ test("shows Azure-specific progress while Online chat is pending", async () => {
           headers: { "Content-Type": "application/json" }
         }
       )
+    );
+  });
+});
+
+test("shows detailed local-model processing information", async () => {
+  let finishChat: ((response: Response) => void) | undefined;
+  const currentFetch = vi.mocked(fetch);
+  currentFetch.mockImplementation(async (input: RequestInfo | URL) => {
+    const url = String(input);
+    if (url.includes("/chat")) {
+      return new Promise<Response>((resolve) => {
+        finishChat = resolve;
+      });
+    }
+    const value = url.includes("/models")
+      ? [{
+          id: "smollm2:1.7b",
+          provider: "Hugging Face",
+          name: "SmolLM2 1.7B",
+          installed: true,
+          available: true,
+          active: true,
+          input_cost_per_million: 0,
+          output_cost_per_million: 0,
+          pricing_note: "No provider token charge."
+        }]
+      : url.includes("/deployment")
+        ? {
+            read_only_demo: true,
+            online_available: false,
+            online_model: "",
+            online_models: []
+          }
+        : url.includes("/scan/status")
+          ? {
+              state: "idle",
+              id: "",
+              discovered: 0,
+              processed: 0,
+              unchanged: 0,
+              removed: 0,
+              errors: 0
+            }
+          : [];
+    return new Response(JSON.stringify(value), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    });
+  });
+
+  render(<App />);
+  await waitFor(() =>
+    expect(screen.getByLabelText("Docker LLM model")).toHaveValue("smollm2:1.7b")
+  );
+  fireEvent.change(screen.getByLabelText("Message Mira"), {
+    target: { value: "Summarize the support policy" }
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Send" }));
+
+  const progress = screen.getByRole("status");
+  expect(progress).toHaveTextContent("Mira is reviewing local sources");
+  expect(progress).toHaveTextContent("SmolLM2 1.7B · Elapsed 0:00");
+  expect(progress).toHaveTextContent("Searching extracted facts");
+  expect(progress).toHaveTextContent("Retrieving and ranking excerpts");
+  expect(progress).toHaveTextContent("Loading SmolLM2 1.7B");
+  expect(progress).toHaveTextContent("Generating and validating the cited answer");
+  expect(progress).toHaveTextContent("stay inside this container");
+  expect(progress).toHaveTextContent("Stage timing is estimated");
+
+  await act(async () => {
+    finishChat?.(
+      new Response(JSON.stringify({
+        state: "answered",
+        text: "Supported response [1]",
+        model: "smollm2:1.7b",
+        citations: [],
+        sources: [],
+        cached: false,
+        history_id: 0
+      }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      })
     );
   });
 });
