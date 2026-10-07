@@ -226,7 +226,7 @@ and idle-to-active startup consume Container Apps resources.
 > advice.
 
 Mira does not use external knowledge or speculate beyond retrieved excerpts.
-When the documents do not support an answer, Mira responds:
+Only when search finds no sufficiently relevant document result, Mira responds:
 
 > I’m unable to answer this question because it falls outside the scope of the
 > provided documents or is not supported by their content.
@@ -240,9 +240,11 @@ Each generation attempt is bounded to 10 seconds.
 If Foundry is rate limited, temporarily unavailable, times out, or returns no
 usable response, Mira displays a cited extractive answer from the Azure AI
 Search results and identifies it with a fallback notice. Mira uses the same
-fallback for a Foundry refusal or uncited answer only when the retrieved
-sources strongly support the question. Otherwise, Mira returns the standard
-unsupported response.
+fallback whenever Foundry refuses or returns an uncited answer after Azure AI
+Search has found relevant sources. Local Ollama uses an equivalent cited
+extractive fallback when a selected model does not produce a cited answer. The
+standard unsupported response is reserved for requests with no sufficiently
+relevant search result.
 
 ## Data Compliance tab
 

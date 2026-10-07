@@ -112,7 +112,12 @@ def sources_support_query(
         f"{source['name']} {source['relative_path']} {source['text']}"
         for source in sources
     ).casefold()
+    source_identity = " ".join(
+        f"{source['name']} {source['relative_path']}"
+        for source in sources
+    ).casefold()
     matched = 0
+    identity_match = False
     for term in terms:
         normalized = term.casefold()
         variants = {normalized}
@@ -121,12 +126,15 @@ def sources_support_query(
         if len(normalized) > 5 and normalized.endswith("ed"):
             variants.add(normalized[:-2])
         matched += any(variant in searchable for variant in variants)
+        identity_match = identity_match or any(
+            variant in source_identity for variant in variants
+        )
     required = (
         1
-        if single_match or len(terms) == 1
+        if len(terms) == 1
         else max(2, (len(terms) * 3 + 4) // 5)
     )
-    return matched >= required
+    return matched >= required or (single_match and identity_match)
 
 
 def extractive_answer(
@@ -829,38 +837,26 @@ def create_app(
                 if f"[{index}]" in text
             ]
             if text.strip() == UNSUPPORTED_ANSWER or not citations:
-                if sources_support_query(sources, request.message):
-                    text, citations = extractive_answer(
-                        sources,
-                        request.message,
-                    )
-                    return finish(
-                        {
-                            "state": "answered",
-                            "text": text,
-                            "citations": citations,
-                            "sources": sources,
-                            "model": "azure-ai-search:extractive-fallback",
-                            "notice": (
-                                "Azure AI Foundry did not produce a cited "
-                                "answer. This response was extracted directly "
-                                "from strongly matching Azure AI Search results."
-                            ),
-                        },
-                        prompt_tokens=generation.prompt_tokens,
-                        output_tokens=generation.output_tokens,
-                        cacheable=False,
-                    )
+                text, citations = extractive_answer(
+                    sources,
+                    request.message,
+                )
                 return finish(
                     {
-                        "state": "insufficient-evidence",
-                        "text": UNSUPPORTED_ANSWER,
-                        "citations": [],
-                        "sources": [],
-                        "model": cache_model,
+                        "state": "answered",
+                        "text": text,
+                        "citations": citations,
+                        "sources": sources,
+                        "model": "azure-ai-search:extractive-fallback",
+                        "notice": (
+                            "Azure AI Foundry did not produce a cited answer. "
+                            "This response was extracted directly from the "
+                            "matching Azure AI Search results."
+                        ),
                     },
                     prompt_tokens=generation.prompt_tokens,
                     output_tokens=generation.output_tokens,
+                    cacheable=False,
                 )
             return finish(
                 {
@@ -1007,17 +1003,24 @@ def create_app(
             if f"[{index}]" in text
         ]
         if text.strip() == UNSUPPORTED_ANSWER or not citations:
+            text, citations = extractive_answer(sources, request.message)
             response = {
-                "state": "insufficient-evidence",
-                "text": UNSUPPORTED_ANSWER,
-                "citations": [],
-                "sources": [],
-                "model": model,
+                "state": "answered",
+                "text": text,
+                "citations": citations,
+                "sources": sources,
+                "model": "local-index:extractive-fallback",
+                "notice": (
+                    "The selected local model did not produce a cited answer. "
+                    "This response was extracted directly from the matching "
+                    "local document results."
+                ),
             }
             return finish(
                 response,
                 prompt_tokens=generation.prompt_tokens,
                 output_tokens=generation.output_tokens,
+                cacheable=False,
             )
         response = {
             "state": "answered",

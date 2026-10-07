@@ -58,7 +58,7 @@ def test_search_and_insufficient_evidence(
     assert answer["text"] == UNSUPPORTED_ANSWER
 
 
-def test_generated_chat_rejects_uncited_model_knowledge(
+def test_generated_chat_replaces_uncited_model_knowledge_with_sources(
     client: TestClient, settings: Settings
 ) -> None:
     (settings.documents_dir / "budget.txt").write_text(
@@ -92,10 +92,13 @@ def test_generated_chat_rejects_uncited_model_knowledge(
         },
     ).json()
 
-    assert body["state"] == "insufficient-evidence"
-    assert body["text"] == UNSUPPORTED_ANSWER
-    assert body["citations"] == []
-    assert body["sources"] == []
+    assert body["state"] == "answered"
+    assert body["model"] == "local-index:extractive-fallback"
+    assert "Paris is the capital of France." not in body["text"]
+    assert "Capital spending" in body["text"]
+    assert body["citations"]
+    assert body["sources"]
+    assert "extracted directly" in body["notice"]
     assert "Do not use prior knowledge, external knowledge, or speculation" in (
         prompts[0]
     )

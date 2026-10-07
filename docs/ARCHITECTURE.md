@@ -317,8 +317,8 @@ Online chat follows this lifecycle:
 8. Persist eligible history, usage, and cache data.
 
 The prompt forbids prior knowledge, external knowledge, speculation, and
-instructions found inside retrieved content. Unsupported questions return the
-standard insufficient-evidence response:
+instructions found inside retrieved content. The standard insufficient-evidence
+response is returned only when retrieval finds no sufficiently relevant source:
 
 > I’m unable to answer this question because it falls outside the scope of the
 > provided documents or is not supported by their content.
@@ -360,17 +360,17 @@ Failures are surfaced according to the boundary where they occur:
 | No sufficiently relevant Azure evidence | Return the standard insufficient-evidence response |
 | Unapproved Azure deployment | Return `400` before inference |
 | Foundry HTTP failure, timeout, quota response, or empty answer | Return a cited extractive answer from the retrieved Search results with a visible notice |
-| Foundry refusal or uncited output with strongly matching evidence | Return a cited extractive answer with a visible notice |
-| Foundry refusal or uncited output without strong support | Return the standard insufficient-evidence response |
+| Foundry refusal or uncited output after relevant retrieval | Return a cited extractive answer with a visible notice |
 | Unapproved local model | Return `400` |
 | Approved local model not installed | Return `model-missing`; preserve the retrieved sources; do not cache the response |
+| Ollama refusal or uncited output after relevant retrieval | Return a cited extractive answer with a visible notice |
 | Ollama generation timeout | Return `504`; no automatic extractive fallback |
 | Ollama HTTP failure | Return `503`; no automatic extractive fallback |
 | Unexpected non-JSON API response | The frontend reports an actionable refresh or server-restart error instead of parsing HTML as JSON |
 
-Azure extractive fallback never uses model memory or external sources. It uses
-only the Azure AI Search results already retrieved for the request. Fallback
-answers are not cached so a later request can retry Foundry.
+Extractive fallback never uses model memory or external sources. It uses only
+the local or Azure results already retrieved for the request. Fallback answers
+are not cached so a later request can retry generation.
 
 ## Persistent and ephemeral storage
 
