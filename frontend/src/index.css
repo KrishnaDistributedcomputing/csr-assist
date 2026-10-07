@@ -379,6 +379,12 @@ select:focus-visible {
 .chat-progress-heading > div { display: grid; gap: 2px; }
 .chat-progress p { margin: 0; color: var(--text); font-size: 11px; line-height: 1.5; }
 .chat-progress span, .chat-error span { color: var(--muted); font-size: 11px; }
+.chat-progress-estimate {
+  display: flex; flex-wrap: wrap; justify-content: space-between; gap: 3px 12px;
+  padding: 8px 9px; border: 1px solid rgba(8, 127, 122, .13); border-radius: 8px; background: var(--surface);
+}
+.chat-progress-estimate strong { color: var(--text); font-size: 10px; }
+.chat-progress-estimate span { color: var(--teal); font-weight: 700; }
 .chat-progress-steps { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; }
 .chat-progress-steps li { display: grid; grid-template-columns: 20px 1fr; align-items: start; gap: 7px; opacity: .55; }
 .chat-progress-steps li > span {

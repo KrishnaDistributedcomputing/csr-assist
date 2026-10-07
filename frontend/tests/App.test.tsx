@@ -575,6 +575,12 @@ test("shows Azure-specific progress while Online chat is pending", async () => {
   );
   expect(screen.getByRole("status")).toHaveTextContent("Elapsed 0:00");
   expect(screen.getByRole("status")).toHaveTextContent(
+    "Estimated total 10 sec–45 sec"
+  );
+  expect(screen.getByRole("status")).toHaveTextContent(
+    "Estimated remaining 10 sec–45 sec"
+  );
+  expect(screen.getByRole("status")).toHaveTextContent(
     "Only the question and bounded approved excerpts"
   );
 
@@ -657,6 +663,8 @@ test("shows detailed local-model processing information", async () => {
   const progress = screen.getByRole("status");
   expect(progress).toHaveTextContent("Mira is reviewing local sources");
   expect(progress).toHaveTextContent("SmolLM2 1.7B · Elapsed 0:00");
+  expect(progress).toHaveTextContent("Estimated total 30 sec–2 min");
+  expect(progress).toHaveTextContent("Estimated remaining 30 sec–2 min");
   expect(progress).toHaveTextContent("Searching extracted facts");
   expect(progress).toHaveTextContent("Retrieving and ranking excerpts");
   expect(progress).toHaveTextContent("Loading SmolLM2 1.7B");

@@ -50,6 +50,52 @@ interface ChatProgressStep {
   detail: string;
 }
 
+interface ChatDurationEstimate {
+  minimumSeconds: number;
+  maximumSeconds: number;
+}
+
+function estimateChatDuration(
+  source: "offline" | "online",
+  modelName?: string
+): ChatDurationEstimate {
+  if (source === "online") {
+    return { minimumSeconds: 10, maximumSeconds: 45 };
+  }
+  if (!modelName) {
+    return { minimumSeconds: 1, maximumSeconds: 5 };
+  }
+
+  const normalizedModel = modelName.toLowerCase();
+  if (normalizedModel.includes("3b")) {
+    return { minimumSeconds: 90, maximumSeconds: 240 };
+  }
+  if (normalizedModel.includes("phi-3") || normalizedModel.includes("phi3")) {
+    return { minimumSeconds: 60, maximumSeconds: 180 };
+  }
+  if (
+    normalizedModel.includes("1b")
+    || normalizedModel.includes("1.5b")
+    || normalizedModel.includes("1.7b")
+  ) {
+    return { minimumSeconds: 30, maximumSeconds: 120 };
+  }
+  return { minimumSeconds: 60, maximumSeconds: 180 };
+}
+
+function formatDuration(seconds: number) {
+  if (seconds < 60) return `${seconds} sec`;
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return remainingSeconds === 0
+    ? `${minutes} min`
+    : `${minutes} min ${remainingSeconds} sec`;
+}
+
+function formatDurationRange(minimumSeconds: number, maximumSeconds: number) {
+  return `${formatDuration(minimumSeconds)}–${formatDuration(maximumSeconds)}`;
+}
+
 function buildChatProgressSteps(
   source: "offline" | "online",
   modelName?: string
@@ -327,6 +373,8 @@ export default function App() {
   const [chatProgressIndex, setChatProgressIndex] = useState(0);
   const [chatElapsedSeconds, setChatElapsedSeconds] = useState(0);
   const [chatProgressModel, setChatProgressModel] = useState("");
+  const [chatDurationEstimate, setChatDurationEstimate] =
+    useState<ChatDurationEstimate>({ minimumSeconds: 1, maximumSeconds: 5 });
   const [searchProgress, setSearchProgress] = useState("");
   const [chatError, setChatError] = useState("");
   const [searchPending, setSearchPending] = useState(false);
@@ -618,6 +666,7 @@ export default function App() {
     setChatProgressSteps(progressSteps);
     setChatProgressIndex(0);
     setChatElapsedSeconds(0);
+    setChatDurationEstimate(estimateChatDuration(dataSource, progressModel || undefined));
     setChatProgressModel(
       progressModel || (
         dataSource === "online"
@@ -916,6 +965,26 @@ export default function App() {
                     {chatProgressModel} · Elapsed {formatElapsed(chatElapsedSeconds)}
                   </span>
                 </div>
+              </div>
+              <div className="chat-progress-estimate">
+                <strong>
+                  Estimated total{" "}
+                  {formatDurationRange(
+                    chatDurationEstimate.minimumSeconds,
+                    chatDurationEstimate.maximumSeconds
+                  )}
+                </strong>
+                <span>
+                  {chatElapsedSeconds >= chatDurationEstimate.maximumSeconds
+                    ? "Taking longer than usual; local CPU load and a cold model can extend this estimate."
+                    : `Estimated remaining ${formatDurationRange(
+                        Math.max(
+                          chatDurationEstimate.minimumSeconds - chatElapsedSeconds,
+                          0
+                        ),
+                        chatDurationEstimate.maximumSeconds - chatElapsedSeconds
+                      )}`}
+                </span>
               </div>
               <p>{chatProgressSteps[chatProgressIndex]?.detail}</p>
               <ol className="chat-progress-steps" aria-label="Estimated request flow">

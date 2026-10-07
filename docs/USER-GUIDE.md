@@ -181,6 +181,7 @@ instead of a single rotating label. The panel shows:
 
 * The selected local or Azure model
 * Elapsed request time
+* A model-aware estimated total duration and live remaining-time range
 * Cache lookup, retrieval, evidence selection, generation, and citation stages
 * An explanation for the currently estimated stage
 * The active local or Azure data boundary
@@ -188,9 +189,13 @@ instead of a single rotating label. The panel shows:
 
 For local Ollama requests, the final stage combines CPU generation and citation
 validation. This stage can take a few minutes when the model is cold or the
-host is CPU constrained. Fast local retrieval skips model loading and
-generation. Azure progress identifies Azure AI Search, bounded evidence
-selection, Foundry generation, and citation validation.
+host is CPU constrained. The estimate uses a range because model loading,
+document size, prompt length, and current CPU load affect completion time. If
+the request exceeds the expected range, the panel reports that it is taking
+longer than usual rather than showing a negative countdown. Fast local
+retrieval skips model loading and generation. Azure progress identifies Azure
+AI Search, bounded evidence selection, Foundry generation, and citation
+validation.
 
 Prompts use the selected source name when you have opened evidence. Otherwise,
 they use the first indexed Offline document or the first returned Azure
