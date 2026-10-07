@@ -75,6 +75,11 @@ class Settings(BaseSettings):
     azure_ai_search_sku: str = ""
     azure_ai_foundry_service: str = ""
     azure_ai_foundry_sku: str = ""
+    azure_log_analytics_workspace_id: str = ""
+    azure_sentinel_subscription_id: str = ""
+    azure_sentinel_resource_group: str = ""
+    azure_sentinel_workspace_name: str = ""
+    azure_sentinel_lookback_hours: int = Field(default=24, ge=1, le=168)
 
     def parsed_faq_questions(self) -> list[str]:
         """Return unique, bounded FAQ questions from the pipe-delimited setting."""

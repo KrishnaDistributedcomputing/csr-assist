@@ -12,6 +12,7 @@ import {
   Rocket,
   Search,
   Send,
+  ShieldAlert,
   Sparkles,
   Sun,
   ThumbsDown,
@@ -322,13 +323,15 @@ const AnalyticsPanel = lazy(() => import("./AnalyticsPanel"));
 const ArchitecturePanel = lazy(() => import("./ArchitecturePanel"));
 const CompliancePanel = lazy(() => import("./CompliancePanel"));
 const GoLivePanel = lazy(() => import("./GoLivePanel"));
-type WorkspaceTab = "chat" | "sources" | "analytics" | "architecture" | "go-live" | "compliance";
+const SecurityPanel = lazy(() => import("./SecurityPanel"));
+type WorkspaceTab = "chat" | "sources" | "analytics" | "architecture" | "go-live" | "security" | "compliance";
 const workspaceTabs: WorkspaceTab[] = [
   "chat",
   "sources",
   "analytics",
   "architecture",
   "go-live",
+  "security",
   "compliance"
 ];
 
@@ -1535,6 +1538,18 @@ export default function App() {
               <Rocket size={15} /> Go-Live
             </button>
             <button
+              id="workspace-tab-security"
+              role="tab"
+              aria-selected={workspaceTab === "security"}
+              aria-controls="workspace-panel-security"
+              tabIndex={workspaceTab === "security" ? 0 : -1}
+              className={workspaceTab === "security" ? "active" : ""}
+              onClick={() => setWorkspaceTab("security")}
+              onKeyDown={handleWorkspaceTabKeyDown}
+            >
+              <ShieldAlert size={15} /> Security
+            </button>
+            <button
               id="workspace-tab-compliance"
               role="tab"
               aria-selected={workspaceTab === "compliance"}
@@ -1786,6 +1801,18 @@ export default function App() {
             >
               <Suspense fallback={<PanelLoading label="Loading go-live plan" />}>
                 <GoLivePanel deployment={deployment} />
+              </Suspense>
+            </div>
+          )}
+          {workspaceTab === "security" && (
+            <div
+              id="workspace-panel-security"
+              role="tabpanel"
+              aria-labelledby="workspace-tab-security"
+              data-tour="security"
+            >
+              <Suspense fallback={<PanelLoading label="Loading security operations" />}>
+                <SecurityPanel />
               </Suspense>
             </div>
           )}

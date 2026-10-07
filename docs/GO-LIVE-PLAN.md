@@ -23,9 +23,9 @@ The plan covers both supported paths:
 
 > [!IMPORTANT]
 > The in-app **Go-Live** tab is an operator checklist and status view. It does
-> not replace Azure Monitor, Container Apps logs, Docker logs, organizational
-> incident tooling, backup systems, or security controls. Record authoritative
-> evidence in the approved operations system.
+> not replace Azure Monitor, Microsoft Sentinel, Container Apps logs, Docker
+> logs, organizational incident tooling, backup systems, or security controls.
+> Record authoritative evidence in the approved operations system.
 
 Apply these principles throughout the day:
 

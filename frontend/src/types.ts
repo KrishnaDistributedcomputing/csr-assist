@@ -143,3 +143,46 @@ export interface UsageDashboard {
     bad: number;
   };
 }
+
+export interface SecurityOverview {
+  configured: boolean;
+  state: "healthy" | "degraded" | "not-configured";
+  workspace: {
+    name: string;
+    resource_group: string;
+    region: string;
+  };
+  lookback_hours: number;
+  summary: {
+    open_incidents: number;
+    high_severity_incidents: number;
+    active_analytic_rules: number;
+    telemetry_events: number;
+  };
+  telemetry: {
+    events: number;
+    errors: number;
+    warnings: number;
+    rate_limits: number;
+    identity_failures: number;
+  };
+  incidents: Array<{
+    id: string;
+    title: string;
+    severity: string;
+    status: string;
+    created_at: string;
+    updated_at: string;
+    owner: string;
+  }>;
+  analytic_rules: Array<{
+    id: string;
+    name: string;
+    severity: string;
+    enabled: boolean;
+    tactics: string[];
+    query_frequency: string;
+  }>;
+  errors: string[];
+  refreshed_at: string;
+}

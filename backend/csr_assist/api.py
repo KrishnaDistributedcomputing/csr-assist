@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import logging
 import re
 import time
@@ -41,6 +42,7 @@ from csr_assist.models import (
 )
 from csr_assist.ollama import OllamaClient
 from csr_assist.security import confined_path, validate_filename
+from csr_assist.sentinel import SentinelClient
 
 logger = logging.getLogger(__name__)
 
@@ -97,6 +99,24 @@ def evidence_excerpt(text: str, query: str) -> str:
     if end < len(text):
         excerpt = f"{excerpt}..."
     return excerpt
+
+
+def log_azure_access_failure(context: str, error: Exception) -> None:
+    """Emit a privacy-safe security event for Azure authorization failures."""
+    is_identity_runtime_error = (
+        isinstance(error, RuntimeError)
+        and "identity" in str(error).casefold()
+    )
+    is_authorization_error = (
+        isinstance(error, httpx.HTTPStatusError)
+        and error.response.status_code in {401, 403}
+    )
+    if is_identity_runtime_error or is_authorization_error:
+        logger.error(
+            "CSR_SECURITY event=identity_failure context=%s error_type=%s",
+            context,
+            type(error).__name__,
+        )
 
 
 def sources_support_query(
@@ -258,6 +278,7 @@ def create_app(
     documents = DocumentService(database, runtime.documents_dir, runtime.max_file_size)
     ollama = OllamaClient(runtime.ollama_url, runtime.inference_timeout)
     azure_ai = AzureAIClient(runtime)
+    sentinel = SentinelClient(runtime, azure_ai.access_token)
     limiter = RateLimiter()
     vector_lock = asyncio.Lock()
     inference_lock = asyncio.Lock()
@@ -315,6 +336,7 @@ def create_app(
     app.state.documents = documents
     app.state.ollama = ollama
     app.state.azure_ai = azure_ai
+    app.state.sentinel = sentinel
 
     async def refresh_vectors() -> int:
         if (
@@ -438,6 +460,14 @@ def create_app(
         limit = limited_routes.get(route)
         bucket = f"{client}:{request.method}:{request.url.path}"
         if limit is not None and not limiter.allowed(bucket, limit):
+            client_hash = hashlib.sha256(client.encode("utf-8")).hexdigest()[:12]
+            logger.warning(
+                "CSR_SECURITY event=rate_limit method=%s route=%s "
+                "client_hash=%s",
+                request.method,
+                request.url.path,
+                client_hash,
+            )
             return JSONResponse(
                 status_code=429,
                 content={
@@ -449,6 +479,16 @@ def create_app(
                 headers={"Retry-After": "60"},
             )
         response = await call_next(request)
+        if response.status_code >= 500:
+            client_hash = hashlib.sha256(client.encode("utf-8")).hexdigest()[:12]
+            logger.error(
+                "CSR_SECURITY event=server_error method=%s route=%s "
+                "status=%s client_hash=%s",
+                request.method,
+                request.url.path,
+                response.status_code,
+                client_hash,
+            )
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
         response.headers["Referrer-Policy"] = "no-referrer"
@@ -495,6 +535,7 @@ def create_app(
                 detail="Azure AI Search timed out while listing documents",
             ) from exc
         except (httpx.HTTPError, RuntimeError) as exc:
+            log_azure_access_failure("online_documents", exc)
             raise HTTPException(
                 status_code=503,
                 detail="Azure AI Search documents are unavailable",
@@ -566,6 +607,10 @@ def create_app(
             "azure_services": azure_services,
             "token_pricing_as_of": TOKEN_PRICING_AS_OF,
         }
+
+    @app.get("/api/security/overview")
+    async def security_overview() -> dict[str, Any]:
+        return await sentinel.overview()
 
     def require_demo_mutation_access() -> None:
         if runtime.read_only_demo:
@@ -663,6 +708,7 @@ def create_app(
                     detail="Azure AI Search timed out",
                 ) from exc
             except (httpx.HTTPError, RuntimeError) as exc:
+                log_azure_access_failure("online_search", exc)
                 raise HTTPException(
                     status_code=503,
                     detail="Azure AI Search is unavailable",
@@ -918,6 +964,7 @@ def create_app(
                     detail="Azure AI Search timed out",
                 ) from exc
             except (httpx.HTTPError, RuntimeError) as exc:
+                log_azure_access_failure("chat_search", exc)
                 raise HTTPException(
                     status_code=503,
                     detail="Azure AI Search is unavailable",
@@ -946,6 +993,7 @@ def create_app(
             try:
                 generation = await azure_ai.generate(prompt, model)
             except (httpx.HTTPError, RuntimeError) as exc:
+                log_azure_access_failure("foundry_generation", exc)
                 logger.warning(
                     "Azure AI Foundry generation failed; using cited extractive "
                     "answer: %s",

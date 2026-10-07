@@ -71,6 +71,10 @@ class AzureAIClient:
             and self.foundry_deployment
         )
 
+    async def access_token(self, resource: str) -> str:
+        """Return a cached managed-identity token for an Azure resource."""
+        return await self._access_token(resource)
+
     async def _access_token(self, resource: str) -> str:
         cached = self._tokens.get(resource)
         if cached and cached.expires_at - time.time() > 300:

@@ -41,6 +41,41 @@ beforeEach(() => {
               corpus_revision: 1,
               feedback: { total: 0, good: 0, bad: 0 }
             }
+        : url.includes("/security/overview")
+          ? {
+              configured: true,
+              state: "healthy",
+              workspace: {
+                name: "law-csr-assist",
+                resource_group: "rg-csr-assist-demo-westus2",
+                region: "West US 2"
+              },
+              lookback_hours: 24,
+              summary: {
+                open_incidents: 0,
+                high_severity_incidents: 0,
+                active_analytic_rules: 3,
+                telemetry_events: 120
+              },
+              telemetry: {
+                events: 120,
+                errors: 1,
+                warnings: 2,
+                rate_limits: 3,
+                identity_failures: 0
+              },
+              incidents: [],
+              analytic_rules: [{
+                id: "rule-1",
+                name: "CSR Assist server error spike",
+                severity: "High",
+                enabled: true,
+                tactics: ["Impact"],
+                query_frequency: "PT5M"
+              }],
+              errors: [],
+              refreshed_at: "2026-10-07T12:00:00Z"
+            }
         : url.includes("/scan/status")
           ? { state: "idle", id: "", discovered: 0, processed: 0, unchanged: 0, removed: 0, errors: 0 }
           : [];
@@ -93,6 +128,16 @@ test("renders the document workspace and Mira", async () => {
     screen.getByRole("heading", { name: "Day 2 go-live command center" })
   ).toBeInTheDocument();
   expect(screen.getByText("Rollback triggers and sequence")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("tab", { name: /Security/ }));
+  expect(
+    await screen.findByLabelText(
+      "Microsoft Sentinel security operations",
+      {},
+      { timeout: 5000 }
+    )
+  ).toBeInTheDocument();
+  expect(screen.getByText("Security operations center")).toBeInTheDocument();
+  expect(screen.getByText("CSR Assist server error spike")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("tab", { name: /Compliance/ }));
   expect(
     await screen.findByLabelText(

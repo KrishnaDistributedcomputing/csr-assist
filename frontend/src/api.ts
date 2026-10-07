@@ -7,6 +7,7 @@ import type {
   OnlineDocumentRecord,
   ScanStatus,
   SearchResponse,
+  SecurityOverview,
   UsageDashboard
 } from "./types";
 
@@ -63,6 +64,7 @@ export const api = {
     }),
   history: () => request<HistoryEntry[]>("/history"),
   usage: () => request<UsageDashboard>("/usage"),
+  securityOverview: () => request<SecurityOverview>("/security/overview"),
   clearHistory: () =>
     request<{ deleted: number }>("/history", { method: "DELETE" }),
   feedback: (historyId: number, rating: "good" | "bad") =>

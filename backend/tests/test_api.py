@@ -21,6 +21,17 @@ def test_health_is_available_without_model(client: TestClient) -> None:
     assert response.json()["application"] == "healthy"
 
 
+def test_security_overview_is_explicit_when_not_configured(
+    client: TestClient,
+) -> None:
+    response = client.get("/api/security/overview")
+
+    assert response.status_code == 200
+    assert response.json()["configured"] is False
+    assert response.json()["state"] == "not-configured"
+    assert response.json()["errors"] == []
+
+
 def test_status_polling_does_not_consume_action_limits(client: TestClient) -> None:
     for _ in range(100):
         assert client.get("/api/documents").status_code == 200
@@ -32,7 +43,7 @@ def test_static_assets_are_compressed_and_cached(client: TestClient) -> None:
     assets = (
         Path(__file__).parents[1] / "csr_assist" / "static" / "assets"
     )
-    javascript = next(assets.glob("*.js"))
+    javascript = max(assets.glob("*.js"), key=lambda asset: asset.stat().st_size)
 
     response = client.get(f"/assets/{javascript.name}")
 

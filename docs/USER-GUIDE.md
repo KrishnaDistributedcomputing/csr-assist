@@ -8,7 +8,7 @@ ms.topic: how-to
 
 ## Navigate the workspace
 
-The primary navigation contains six sections:
+The primary navigation contains seven sections:
 
 * Use **Assistant** for grounded chat and source-aware prompts.
 * Use **Sources** to search sources and preview exact excerpts.
@@ -16,11 +16,13 @@ The primary navigation contains six sections:
   metrics.
 * Use **Go-Live** to organize Day 2 operating gates, checks, incidents, and
   handoff.
+* Use **Security** to review Microsoft Sentinel incidents, analytic rules,
+  telemetry signals, and investigation guidance.
 * Use **Architecture** to review document processing and response flows.
 * Use **Compliance** to review the data boundary and customer responsibilities
   for the selected Online or Offline mode.
 
-All six sections remain available on small screens. The
+All seven sections remain available on small screens. The
 header displays the active Online or Offline mode, and the **Ask Mira** button
 opens the mobile assistant.
 
@@ -283,6 +285,33 @@ For the hour-by-hour schedule, role matrix, exact readiness and health gates,
 monitoring checks, document and cache tests, severity definitions, rollback
 procedure, success metrics, handoff, and hypercare exit criteria, follow the
 [Day 2 go-live plan](./GO-LIVE-PLAN.md).
+
+## Security
+
+Open **Security** to review the Azure deployment's Microsoft Sentinel posture.
+The tab loads a read-only summary from the configured Log Analytics and
+Sentinel workspace:
+
+* Open and high-severity incident counts
+* Enabled scheduled analytic rules
+* Container Apps security event volume for the selected lookback window
+* Server error, warning, rate-limit, and managed-identity failure totals
+* Recent incident severity, status, owner, and update time
+* Detection status, severity, frequency, and MITRE ATT&CK tactics
+
+A healthy state means all three sources returned successfully. A degraded
+state lists each unavailable source instead of presenting partial data as
+complete. Local Docker displays an explicit not-configured state because it
+does not send local telemetry to Azure.
+
+Security telemetry excludes questions, answers, citations, and document
+content. Client addresses are represented only by a truncated hash in bounded
+security events.
+
+Follow the
+[Microsoft Sentinel operations guide](./SECURITY-OPERATIONS.md) for deployment,
+privacy boundaries, detections, validation, incident investigation, retention,
+and cost guidance.
 
 ### Review the selected-model cost
 
