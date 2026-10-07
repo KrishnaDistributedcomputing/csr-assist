@@ -1,0 +1,18 @@
+FROM node:24-bookworm-slim AS frontend
+WORKDIR /src
+COPY package.json package-lock.json tsconfig.json tsconfig.app.json tsconfig.node.json vite.config.ts ./
+COPY frontend ./frontend
+RUN npm ci && npm run build
+
+FROM acrcsrassistkvenk26.azurecr.io/csr-assist@sha256:c10b6bad7e80a5d774ac2b41af1d0a7ed9136d6209b2e3e93a4987df0642c93f
+
+USER root
+COPY backend/csr_assist /opt/csr-assist/backend/csr_assist
+COPY --from=frontend /src/backend/csr_assist/static /opt/csr-assist/backend/csr_assist/static
+COPY docker/entrypoint.sh /usr/local/bin/csr-assist-entrypoint
+COPY docker/supervisord.conf /etc/supervisor/conf.d/csr-assist.conf
+RUN sed -i 's/\r$//' /usr/local/bin/csr-assist-entrypoint \
+    && chmod 0755 /usr/local/bin/csr-assist-entrypoint \
+    && chown -R csrassist:csrassist /opt/csr-assist/backend/csr_assist
+
+USER csrassist
