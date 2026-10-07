@@ -251,7 +251,8 @@ export default function App() {
   );
   const [searchProgress, setSearchProgress] = useState("");
   const [chatError, setChatError] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [searchPending, setSearchPending] = useState(false);
+  const [documentPending, setDocumentPending] = useState(false);
   const [error, setError] = useState("");
   const [tourStep, setTourStep] = useState<number | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
@@ -437,7 +438,7 @@ export default function App() {
   async function handleSearch(event: FormEvent) {
     event.preventDefault();
     if (!query.trim()) return;
-    setBusy(true);
+    setSearchPending(true);
     setSearchProgress(searchProgressMessages[0]);
     let progressIndex = 0;
     const progressTimer = window.setInterval(() => {
@@ -455,7 +456,7 @@ export default function App() {
     } finally {
       window.clearInterval(progressTimer);
       setSearchProgress("");
-      setBusy(false);
+      setSearchPending(false);
     }
   }
 
@@ -484,7 +485,6 @@ export default function App() {
   async function handleChat(event: FormEvent) {
     event.preventDefault();
     if (!message.trim()) return;
-    setBusy(true);
     setChatPending(true);
     setAssistantTab("chat");
     const progressMessages =
@@ -521,32 +521,31 @@ export default function App() {
     } finally {
       window.clearInterval(progressTimer);
       setChatPending(false);
-      setBusy(false);
     }
   }
 
   async function handleScan() {
-    setBusy(true);
+    setDocumentPending(true);
     try {
       await api.scan();
       await refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Scan failed");
     } finally {
-      setBusy(false);
+      setDocumentPending(false);
     }
   }
 
   async function handleUpload(file?: File) {
     if (!file) return;
-    setBusy(true);
+    setDocumentPending(true);
     try {
       await api.upload(file);
       await refresh();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Upload failed");
     } finally {
-      setBusy(false);
+      setDocumentPending(false);
       if (fileInput.current) fileInput.current.value = "";
     }
   }
@@ -942,7 +941,7 @@ export default function App() {
             <button
               className="send-button"
               aria-label="Send"
-              disabled={busy || !message.trim()}
+              disabled={chatPending || !message.trim()}
             >
               <Send size={19} />
             </button>
@@ -1077,12 +1076,17 @@ export default function App() {
                   ) : (
                     <button
                       className="secondary"
+                      disabled={documentPending}
                       onClick={() => fileInput.current?.click()}
                     >
                       <Upload size={17} /> Upload
                     </button>
                   )}
-                  <button className="primary" onClick={() => void handleScan()} disabled={busy}>
+                  <button
+                    className="primary"
+                    onClick={() => void handleScan()}
+                    disabled={documentPending}
+                  >
                     <RefreshCw size={17} className={scan?.state === "running" ? "spin" : ""} />
                     {deployment.read_only_demo ? "Refresh samples" : "Scan documents"}
                   </button>
@@ -1176,7 +1180,7 @@ export default function App() {
               }
               aria-label="Search documents"
             />
-            <button disabled={busy || !query.trim()}>Search</button>
+            <button disabled={searchPending || !query.trim()}>Search</button>
           </form>
           {searchProgress && (
             <div className="operation-progress" role="status" aria-live="polite">

@@ -113,6 +113,40 @@ test("workspace tabs support keyboard navigation", async () => {
   ).toBeInTheDocument();
 });
 
+test("document search does not disable a prepared chat message", async () => {
+  const currentFetch = vi.mocked(fetch);
+  const defaultFetch = currentFetch.getMockImplementation();
+  let finishSearch: ((response: Response) => void) | undefined;
+  const pendingSearch = new Promise<Response>((resolve) => {
+    finishSearch = resolve;
+  });
+  currentFetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+    if (String(input).includes("/search?")) return pendingSearch;
+    if (!defaultFetch) throw new Error("Default fetch mock is unavailable");
+    return defaultFetch(input, init);
+  });
+
+  render(<App />);
+  fireEvent.change(screen.getByLabelText("Search documents"), {
+    target: { value: "return policy" }
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Search" }));
+  expect(screen.getByRole("button", { name: "Search" })).toBeDisabled();
+
+  fireEvent.change(screen.getByLabelText("Message Mira"), {
+    target: { value: "What is the return policy?" }
+  });
+  expect(screen.getByRole("button", { name: "Send" })).not.toBeDisabled();
+
+  await act(async () => {
+    finishSearch?.(new Response(JSON.stringify({ results: [] }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" }
+    }));
+    await pendingSearch;
+  });
+});
+
 test("guided demo explains the workspace step by step", async () => {
   render(<App />);
   const help = screen.getByRole("button", { name: "How to use" });
