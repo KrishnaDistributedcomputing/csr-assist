@@ -35,6 +35,15 @@ INITIAL_MODELS = [
         "name": "SmolLM2 1.7B",
     },
 ]
+DEFAULT_FAQ_QUESTIONS = "|".join(
+    (
+        "What is the return policy?",
+        "What support options are available?",
+        "What customer actions are required?",
+        "Are there conflicting instructions across the indexed documents?",
+        "What information is missing from the indexed documents?",
+    )
+)
 
 
 class Settings(BaseSettings):
@@ -49,6 +58,7 @@ class Settings(BaseSettings):
     ollama_url: str = "http://127.0.0.1:11434"
     max_file_size: int = Field(default=52_428_800, gt=0)
     inference_timeout: int = Field(default=300, ge=5, le=600)
+    faq_questions: str = DEFAULT_FAQ_QUESTIONS
     allowed_embed_origins: str = "http://localhost:8080"
     read_only_demo: bool = False
     azure_ai_search_endpoint: str = ""
@@ -65,6 +75,21 @@ class Settings(BaseSettings):
     azure_ai_search_sku: str = ""
     azure_ai_foundry_service: str = ""
     azure_ai_foundry_sku: str = ""
+
+    def parsed_faq_questions(self) -> list[str]:
+        """Return unique, bounded FAQ questions from the pipe-delimited setting."""
+        questions: list[str] = []
+        seen: set[str] = set()
+        for value in self.faq_questions.split("|"):
+            question = " ".join(value.split())
+            normalized = question.casefold()
+            if not question or len(question) > 500 or normalized in seen:
+                continue
+            questions.append(question)
+            seen.add(normalized)
+            if len(questions) == 20:
+                break
+        return questions
 
     def ensure_directories(self) -> None:
         """Create required writable data directories."""

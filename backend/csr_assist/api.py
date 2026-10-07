@@ -262,6 +262,11 @@ def create_app(
     inference_lock = asyncio.Lock()
     answer_waiters = 0
     last_interaction = time.monotonic()
+    faq_questions = runtime.parsed_faq_questions()
+    faq_question_keys = {
+        " ".join(question.casefold().split())
+        for question in faq_questions
+    }
     limited_routes = {
         ("POST", "/api/chat"): 20,
         ("GET", "/api/search"): 60,
@@ -277,13 +282,14 @@ def create_app(
             while True:
                 now = time.monotonic()
                 if now >= next_scan:
-                    await asyncio.to_thread(documents.scan)
+                    await asyncio.to_thread(scan_and_prewarm)
                     next_scan = time.monotonic() + SCAN_INTERVAL_SECONDS
                 await refresh_vectors()
                 await asyncio.sleep(
                     max(0.1, min(SCAN_INTERVAL_SECONDS, next_scan - now))
                 )
 
+        await asyncio.to_thread(prewarm_faq_answers)
         scanner = asyncio.create_task(automatic_scan())
         try:
             yield
@@ -363,6 +369,63 @@ def create_app(
         for result in results:
             result["channel"] = "offline"
         return results
+
+    def build_fast_answer(question: str) -> dict[str, Any]:
+        """Build the same grounded extractive response used by fast local chat."""
+        terms = set(query_terms(question))
+        sources = database.search(question, CHAT_SOURCE_LIMIT)
+        if sources and not terms.intersection(MULTI_SOURCE_TERMS):
+            primary_document = int(sources[0]["document_id"])
+            sources = [
+                source
+                for source in sources
+                if int(source["document_id"]) == primary_document
+            ]
+        if sources and not sources_support_query(sources, question):
+            sources = []
+        if not sources:
+            return {
+                "state": "insufficient-evidence",
+                "text": UNSUPPORTED_ANSWER,
+                "citations": [],
+                "sources": [],
+                "model": "local-index",
+            }
+        for source in sources:
+            source["retrieval"] = "keyword"
+            source["channel"] = "offline"
+        text, citations = extractive_answer(sources, question)
+        return {
+            "state": "answered",
+            "text": text,
+            "citations": citations,
+            "sources": sources,
+            "model": "local-index",
+        }
+
+    def prewarm_faq_answers() -> int:
+        """Prebuild supported fast local FAQ answers for the current corpus."""
+        warmed = 0
+        for question in faq_questions:
+            response = build_fast_answer(question)
+            if response["state"] != "answered":
+                continue
+            response["cached"] = False
+            response["history_id"] = 0
+            database.store_cached_answer(
+                question,
+                "offline:fast",
+                "local-index",
+                response,
+            )
+            warmed += 1
+        return warmed
+
+    def scan_and_prewarm() -> dict[str, Any]:
+        """Scan documents and refresh supported FAQ answers when content changes."""
+        result = documents.scan()
+        result["faq_answers_prebuilt"] = prewarm_faq_answers()
+        return result
 
     @app.middleware("http")
     async def request_limits(request: Request, call_next):
@@ -515,7 +578,7 @@ def create_app(
         except Exception:
             destination.unlink(missing_ok=True)
             raise
-        Thread(target=documents.scan, daemon=True).start()
+        Thread(target=scan_and_prewarm, daemon=True).start()
         return {"name": filename, "status": "accepted"}
 
     @app.get("/api/documents/{document_id}/chunks/{chunk_id}")
@@ -527,7 +590,7 @@ def create_app(
 
     @app.post("/api/scan", status_code=status.HTTP_202_ACCEPTED)
     async def start_scan() -> dict[str, Any]:
-        result = await asyncio.to_thread(documents.scan)
+        result = await asyncio.to_thread(scan_and_prewarm)
         asyncio.create_task(refresh_vectors())
         result["vectors_added"] = 0
         result["vector_indexing"] = "scheduled"
@@ -728,6 +791,43 @@ def create_app(
                 )
             return response
 
+        def finish_cached(cached: dict[str, Any]) -> dict[str, Any]:
+            cached["cached"] = True
+            history_id = 0
+            if not runtime.read_only_demo:
+                history_id = database.add_history(
+                    "chat",
+                    request.message,
+                    response_text=cached["text"],
+                    response_state=cached["state"],
+                    model=cached["model"],
+                    sources=cached["sources"],
+                )
+            cached["history_id"] = history_id
+            database.record_usage(
+                request_kind="chat",
+                mode=cache_mode,
+                model=cached["model"],
+                cache_hit=True,
+                prompt_tokens=0,
+                output_tokens=0,
+                latency_ms=round((time.perf_counter() - started) * 1000),
+            )
+            return cached
+
+        normalized_question = " ".join(request.message.casefold().split())
+        if (
+            request.source == "offline"
+            and normalized_question in faq_question_keys
+        ):
+            prebuilt = database.cached_answer(
+                request.message,
+                "offline:fast",
+                "local-index",
+            )
+            if prebuilt:
+                return finish_cached(prebuilt)
+
         if not is_draft_follow_up:
             cached = database.cached_answer(
                 request.message,
@@ -735,28 +835,7 @@ def create_app(
                 cache_model,
             )
             if cached:
-                cached["cached"] = True
-                history_id = 0
-                if not runtime.read_only_demo:
-                    history_id = database.add_history(
-                        "chat",
-                        request.message,
-                        response_text=cached["text"],
-                        response_state=cached["state"],
-                        model=cached["model"],
-                        sources=cached["sources"],
-                    )
-                cached["history_id"] = history_id
-                database.record_usage(
-                    request_kind="chat",
-                    mode=cache_mode,
-                    model=cached["model"],
-                    cache_hit=True,
-                    prompt_tokens=0,
-                    output_tokens=0,
-                    latency_ms=round((time.perf_counter() - started) * 1000),
-                )
-                return cached
+                return finish_cached(cached)
 
         if request.source == "online":
             if not azure_ai.configured:
@@ -875,16 +954,6 @@ def create_app(
             )
 
         if request.mode == "fast":
-            sources = database.search(request.message, CHAT_SOURCE_LIMIT)
-            if sources and not terms.intersection(MULTI_SOURCE_TERMS):
-                primary_document = int(sources[0]["document_id"])
-                sources = [
-                    source
-                    for source in sources
-                    if int(source["document_id"]) == primary_document
-                ]
-            if sources and not sources_support_query(sources, request.message):
-                sources = []
             recent = database.list_history(1)
             recent_chat = (
                 recent[0]
@@ -916,26 +985,8 @@ def create_app(
                     cacheable=False,
                     history_sources=sources,
                 )
-            if not sources:
-                response = {
-                    "state": "insufficient-evidence",
-                    "text": UNSUPPORTED_ANSWER,
-                    "citations": [],
-                    "sources": [],
-                    "model": "local-index",
-                }
-            else:
-                for source in sources:
-                    source["retrieval"] = "keyword"
-                    source["channel"] = "offline"
-                text, citations = extractive_answer(sources, request.message)
-                response = {
-                    "state": "answered",
-                    "text": text,
-                    "citations": citations,
-                    "sources": sources,
-                    "model": "local-index",
-                }
+            response = build_fast_answer(request.message)
+            sources = response["sources"]
             return finish(
                 response,
                 history_sources=[

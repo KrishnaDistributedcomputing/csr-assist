@@ -393,13 +393,46 @@ def test_fast_chat_cache_and_usage_dashboard(
     ).json()
     usage = client.get("/api/usage").json()
 
-    assert first["cached"] is False
+    assert first["cached"] is True
     assert second["cached"] is True
     assert usage["totals"]["requests"] == 2
-    assert usage["totals"]["cache_hits"] == 1
+    assert usage["totals"]["cache_hits"] == 2
     assert usage["totals"]["total_tokens"] == 0
     assert usage["cached_answers"] == 1
     assert usage["key_facts"] >= 1
+
+
+def test_scan_prebuilds_only_supported_faq_answers(
+    client: TestClient, settings: Settings
+) -> None:
+    (settings.documents_dir / "policy.txt").write_text(
+        "Returns require proof of purchase. Items must be unused.",
+        encoding="utf-8",
+    )
+
+    scan = client.post("/api/scan")
+    first = client.post(
+        "/api/chat",
+        json={
+            "message": "  WHAT   is the return policy?  ",
+            "mode": "generated",
+            "model": "phi3:mini",
+        },
+    )
+    unsupported = client.post(
+        "/api/chat",
+        json={"message": "What support options are available?"},
+    )
+
+    assert scan.status_code == 202
+    assert scan.json()["faq_answers_prebuilt"] == 1
+    assert first.status_code == 200
+    assert first.json()["cached"] is True
+    assert first.json()["model"] == "local-index"
+    assert first.json()["citations"]
+    assert unsupported.status_code == 200
+    assert unsupported.json()["cached"] is False
+    assert unsupported.json()["state"] == "insufficient-evidence"
 
 
 def test_bad_feedback_invalidates_cache_and_reranks_sources(

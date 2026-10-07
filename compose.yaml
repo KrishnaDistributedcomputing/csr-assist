@@ -16,6 +16,7 @@ services:
       CSR_OLLAMA_URL: http://127.0.0.1:11434
       CSR_MAX_FILE_SIZE: ${CSR_MAX_FILE_SIZE:-52428800}
       CSR_INFERENCE_TIMEOUT: ${CSR_INFERENCE_TIMEOUT:-300}
+      CSR_FAQ_QUESTIONS: ${CSR_FAQ_QUESTIONS:-What is the return policy?|What support options are available?|What customer actions are required?|Are there conflicting instructions across the indexed documents?|What information is missing from the indexed documents?}
       CSR_ALLOWED_EMBED_ORIGINS: ${CSR_ALLOWED_EMBED_ORIGINS:-http://localhost:8080}
       CSR_AZURE_AI_SEARCH_ENDPOINT: ${CSR_AZURE_AI_SEARCH_ENDPOINT:-}
       CSR_AZURE_AI_SEARCH_INDEX: ${CSR_AZURE_AI_SEARCH_INDEX:-csr-assist-documents}

@@ -197,6 +197,14 @@ instead of a single rotating label. The panel shows:
 * The active local or Azure data boundary
 * A reminder that exact server timing is not streamed to the browser
 
+CSR Assist prebuilds supported fast-retrieval answers for frequently asked
+questions at startup and after every document scan. A matching question returns
+the grounded answer and citations directly from the revision-aware cache,
+without waiting for local model inference, even when a local LLM is selected.
+Unsupported questions are not prebuilt. Configure up to 20 questions with the pipe-delimited
+`CSR_FAQ_QUESTIONS` environment variable. Any document change advances the
+corpus revision, invalidates stale answers, and rebuilds supported FAQ entries.
+
 For local Ollama requests, the final stage combines CPU generation and citation
 validation. This stage can take a few minutes when the model is cold or the
 host is CPU constrained. The estimate uses a range because model loading,
