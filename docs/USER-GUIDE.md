@@ -186,6 +186,13 @@ prevents long document lists and empty previews from pushing chat below the
 fold. **Analytics**, **Architecture**, and **Compliance** retain their focused
 operational views.
 
+In **Online** mode, open **Grounding documents** to limit Azure AI Search and
+Mira to specific approved documents. All documents are selected by default.
+The same selection applies to document search and chat, and the backend sends
+the selected document IDs as an Azure AI Search filter. Changing the selection
+clears the previous answer and evidence preview so content from an earlier
+scope is not mistaken for the current grounding set.
+
 While a request is pending, Mira displays an estimated behind-the-scenes flow
 instead of a single rotating label. The panel shows:
 

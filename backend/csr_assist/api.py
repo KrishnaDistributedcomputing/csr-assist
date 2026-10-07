@@ -20,6 +20,7 @@ from fastapi import (
     FastAPI,
     File,
     HTTPException,
+    Query,
     Request,
     UploadFile,
     status,
@@ -482,6 +483,23 @@ def create_app(
     async def list_documents() -> list[dict[str, Any]]:
         return database.list_documents()
 
+    @app.get("/api/online/documents")
+    async def list_online_documents() -> list[dict[str, Any]]:
+        if not azure_ai.configured:
+            return []
+        try:
+            return await azure_ai.list_documents()
+        except httpx.TimeoutException as exc:
+            raise HTTPException(
+                status_code=504,
+                detail="Azure AI Search timed out while listing documents",
+            ) from exc
+        except (httpx.HTTPError, RuntimeError) as exc:
+            raise HTTPException(
+                status_code=503,
+                detail="Azure AI Search documents are unavailable",
+            ) from exc
+
     @app.get("/api/deployment")
     async def deployment() -> dict[str, Any]:
         online_models = [
@@ -605,10 +623,24 @@ def create_app(
         q: str,
         limit: int = 8,
         source: Literal["offline", "online"] = "offline",
+        document_ids: list[int] = Query(default=[]),
     ) -> dict[str, Any]:
         if not q.strip() or len(q) > 500:
             raise HTTPException(status_code=400, detail="Search query is invalid")
         bounded_limit = min(max(limit, 1), 20)
+        selected_document_ids = sorted(set(document_ids))
+        if len(selected_document_ids) > 50 or any(
+            document_id <= 0 for document_id in selected_document_ids
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Azure document selection is invalid",
+            )
+        if source == "offline" and selected_document_ids:
+            raise HTTPException(
+                status_code=400,
+                detail="Azure documents can be selected only in online mode",
+            )
         if source == "online":
             if not azure_ai.configured:
                 raise HTTPException(
@@ -616,7 +648,15 @@ def create_app(
                     detail="Azure AI online mode is not configured",
                 )
             try:
-                results = await azure_ai.search(q, bounded_limit)
+                results = (
+                    await azure_ai.search(
+                        q,
+                        bounded_limit,
+                        selected_document_ids,
+                    )
+                    if selected_document_ids
+                    else await azure_ai.search(q, bounded_limit)
+                )
             except httpx.TimeoutException as exc:
                 raise HTTPException(
                     status_code=504,
@@ -712,6 +752,17 @@ def create_app(
         nonlocal answer_waiters
         started = time.perf_counter()
         saved = config.read()
+        selected_document_ids = sorted(set(request.document_ids))
+        if any(document_id <= 0 for document_id in selected_document_ids):
+            raise HTTPException(
+                status_code=400,
+                detail="Azure document selection is invalid",
+            )
+        if request.source == "offline" and selected_document_ids:
+            raise HTTPException(
+                status_code=400,
+                detail="Azure documents can be selected only in online mode",
+            )
         if request.source == "online":
             if not azure_ai.configured:
                 raise HTTPException(
@@ -735,7 +786,12 @@ def create_app(
                     status_code=400,
                     detail="Local model is not approved",
                 )
-        cache_mode = f"{request.source}:{request.mode}"
+        document_scope = (
+            f":documents={','.join(str(value) for value in selected_document_ids)}"
+            if selected_document_ids
+            else ""
+        )
+        cache_mode = f"{request.source}:{request.mode}{document_scope}"
         cache_model = (
             f"azure-foundry:{model}"
             if request.source == "online"
@@ -844,9 +900,17 @@ def create_app(
                     detail="Azure AI online mode is not configured",
                 )
             try:
-                sources = await azure_ai.search(
-                    request.message,
-                    CHAT_SOURCE_LIMIT,
+                sources = (
+                    await azure_ai.search(
+                        request.message,
+                        CHAT_SOURCE_LIMIT,
+                        selected_document_ids,
+                    )
+                    if selected_document_ids
+                    else await azure_ai.search(
+                        request.message,
+                        CHAT_SOURCE_LIMIT,
+                    )
                 )
             except httpx.TimeoutException as exc:
                 raise HTTPException(

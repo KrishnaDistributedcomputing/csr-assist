@@ -107,6 +107,7 @@ class AzureAIClient:
         self,
         query: str,
         limit: int,
+        document_ids: list[int] | None = None,
     ) -> list[dict[str, Any]]:
         """Search the configured Azure AI Search index."""
         if not self.configured:
@@ -124,6 +125,11 @@ class AzureAIClient:
                 "extraction,source_url"
             ),
         }
+        if document_ids:
+            payload["filter"] = " or ".join(
+                f"document_id eq {document_id}"
+                for document_id in sorted(set(document_ids))
+            )
         async with httpx.AsyncClient(
             timeout=self.timeout,
             transport=self.transport,
@@ -152,6 +158,48 @@ class AzureAIClient:
                 }
             )
         return results
+
+    async def list_documents(self) -> list[dict[str, Any]]:
+        """Return distinct documents available in the Azure Search index."""
+        if not self.configured:
+            return []
+        token = await self._access_token("https://search.azure.com/")
+        if not token:
+            raise RuntimeError("Azure managed identity returned an empty token")
+        index = quote(self.search_index, safe="")
+        url = f"{self.search_endpoint}/indexes/{index}/docs/search"
+        payload = {
+            "search": "*",
+            "top": 1000,
+            "select": "document_id,name,relative_path,source_url",
+        }
+        async with httpx.AsyncClient(
+            timeout=self.timeout,
+            transport=self.transport,
+        ) as client:
+            response = await client.post(
+                url,
+                params={"api-version": SEARCH_API_VERSION},
+                headers={"Authorization": f"******"},
+                json=payload,
+            )
+            response.raise_for_status()
+        documents: dict[int, dict[str, Any]] = {}
+        for item in response.json().get("value", []):
+            document_id = int(item["document_id"])
+            documents[document_id] = {
+                "document_id": document_id,
+                "name": str(item["name"]),
+                "relative_path": str(item["relative_path"]),
+                "source_url": str(item.get("source_url", "")),
+            }
+        return sorted(
+            documents.values(),
+            key=lambda document: (
+                str(document["name"]).casefold(),
+                int(document["document_id"]),
+            ),
+        )
 
     async def generate(
         self,

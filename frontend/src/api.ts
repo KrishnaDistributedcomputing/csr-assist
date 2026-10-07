@@ -4,6 +4,7 @@ import type {
   DocumentRecord,
   HistoryEntry,
   ModelRecord,
+  OnlineDocumentRecord,
   ScanStatus,
   SearchResponse,
   UsageDashboard
@@ -27,17 +28,25 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 export const api = {
   deployment: () => request<DeploymentInfo>("/deployment"),
   documents: () => request<DocumentRecord[]>("/documents"),
+  onlineDocuments: () =>
+    request<OnlineDocumentRecord[]>("/online/documents"),
   models: () => request<ModelRecord[]>("/models"),
   scanStatus: () => request<ScanStatus>("/scan/status"),
   scan: () => request<ScanStatus>("/scan", { method: "POST" }),
-  search: (query: string, source: "offline" | "online") =>
+  search: (
+    query: string,
+    source: "offline" | "online",
+    documentIds: number[] = []
+  ) =>
     request<SearchResponse>(
       `/search?q=${encodeURIComponent(query)}&source=${source}`
+      + documentIds.map((id) => `&document_ids=${id}`).join("")
     ),
   chat: (
     message: string,
     source: "offline" | "online",
-    model?: string
+    model?: string,
+    documentIds: number[] = []
   ) =>
     request<ChatResponse>("/chat", {
       method: "POST",
@@ -46,7 +55,10 @@ export const api = {
         message,
         source,
         mode: source === "offline" && model ? "generated" : "fast",
-        ...(model ? { model } : {})
+        ...(model ? { model } : {}),
+        ...(source === "online" && documentIds.length
+          ? { document_ids: documentIds }
+          : {})
       })
     }),
   history: () => request<HistoryEntry[]>("/history"),

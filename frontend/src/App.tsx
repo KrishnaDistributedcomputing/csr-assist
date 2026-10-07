@@ -34,6 +34,7 @@ import type {
   DocumentRecord,
   HistoryEntry,
   ModelRecord,
+  OnlineDocumentRecord,
   ScanStatus,
   Source,
   UsageDashboard
@@ -341,6 +342,9 @@ export default function App() {
   const widget = new URLSearchParams(window.location.search).get("widget") === "1";
   const [dark, setDark] = useState(false);
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
+  const [onlineDocuments, setOnlineDocuments] = useState<OnlineDocumentRecord[]>([]);
+  const [selectedOnlineDocumentIds, setSelectedOnlineDocumentIds] =
+    useState<number[]>([]);
   const [deployment, setDeployment] = useState<DeploymentInfo>({
     read_only_demo: false,
     online_available: false,
@@ -477,6 +481,17 @@ export default function App() {
           );
         }),
         api.documents().then(setDocuments),
+        api.onlineDocuments().then((nextDocuments) => {
+          setOnlineDocuments(nextDocuments);
+          const availableIds = new Set(
+            nextDocuments.map((document) => document.document_id)
+          );
+          setSelectedOnlineDocumentIds((current) => {
+            if (current.length === 0) return current;
+            const retained = current.filter((id) => availableIds.has(id));
+            return retained.length === nextDocuments.length ? [] : retained;
+          });
+        }),
         api.scanStatus().then(setScan)
       ]);
       setError("");
@@ -604,7 +619,11 @@ export default function App() {
       setSearchProgress(searchProgressMessages[progressIndex]);
     }, 700);
     try {
-      const response = await api.search(query, dataSource);
+      const response = await api.search(
+        query,
+        dataSource,
+        dataSource === "online" ? selectedOnlineDocumentIds : []
+      );
       setResults(response.results);
       setPreview(response.results[0] ?? null);
       setHistoryLoaded(false);
@@ -678,7 +697,8 @@ export default function App() {
       const response = await api.chat(
         message,
         dataSource,
-        selectedModel || undefined
+        selectedModel || undefined,
+        dataSource === "online" ? selectedOnlineDocumentIds : []
       );
       setAnswer(response);
       setFeedbackRating(null);
@@ -760,6 +780,76 @@ export default function App() {
     </div>
   );
 
+  function toggleOnlineDocument(documentId: number) {
+    const allIds = onlineDocuments.map((document) => document.document_id);
+    setSelectedOnlineDocumentIds((current) => {
+      const selected = current.length === 0 ? allIds : current;
+      const next = selected.includes(documentId)
+        ? selected.filter((id) => id !== documentId)
+        : [...selected, documentId];
+      const normalized = [...new Set(next)].sort((left, right) => left - right);
+      return normalized.length === 0 || normalized.length === allIds.length
+        ? []
+        : normalized;
+    });
+    setResults([]);
+    setPreview(null);
+    setAnswer(null);
+  }
+
+  const azureGroundingSelector = dataSource === "online" && (
+    <details className="azure-grounding-selector">
+      <summary>
+        <span>
+          <FileSearch size={15} />
+          <strong>Grounding documents</strong>
+        </span>
+        <small>
+          {selectedOnlineDocumentIds.length === 0
+            ? `All ${onlineDocuments.length} Azure documents`
+            : `${selectedOnlineDocumentIds.length} of ${onlineDocuments.length} selected`}
+        </small>
+      </summary>
+      <div className="azure-grounding-options">
+        <label>
+          <input
+            type="checkbox"
+            checked={selectedOnlineDocumentIds.length === 0}
+            onChange={() => {
+              setSelectedOnlineDocumentIds([]);
+              setResults([]);
+              setPreview(null);
+              setAnswer(null);
+            }}
+          />
+          <span>
+            <strong>All Azure documents</strong>
+            <small>Use every approved document in the managed index.</small>
+          </span>
+        </label>
+        {onlineDocuments.map((document) => (
+          <label key={document.document_id}>
+            <input
+              type="checkbox"
+              checked={
+                selectedOnlineDocumentIds.length === 0
+                || selectedOnlineDocumentIds.includes(document.document_id)
+              }
+              onChange={() => toggleOnlineDocument(document.document_id)}
+            />
+            <span>
+              <strong>{document.name}</strong>
+              <small>{document.relative_path}</small>
+            </span>
+          </label>
+        ))}
+        {onlineDocuments.length === 0 && (
+          <p>No approved Azure documents are currently available.</p>
+        )}
+      </div>
+    </details>
+  );
+
   const assistant = (
     <section className="assistant-panel" aria-label="Mira assistant">
       <header className="assistant-header">
@@ -794,6 +884,7 @@ export default function App() {
         <p className={`source-boundary-notice ${dataSource}`} role="note">
           {sourceBoundaryMessage}
         </p>
+        {azureGroundingSelector}
         <div className="model-selector" data-tour="model">
           <label htmlFor="chat-model">
             {dataSource === "online" ? "Azure LLM model" : "Docker LLM model"}
@@ -1471,6 +1562,7 @@ export default function App() {
             </div>
             {sourceToggle}
           </div>
+          {azureGroundingSelector}
           <form className="search-bar" onSubmit={handleSearch} data-tour="search">
             <Search size={20} />
             <input

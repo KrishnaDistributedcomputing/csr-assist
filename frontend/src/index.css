@@ -321,6 +321,30 @@ select:focus-visible {
   margin: 4px 0 6px; padding: 9px 10px; color: #285244; border: 1px solid #aad7c5;
   border-radius: 9px; background: #effaf5; font-size: 10px; line-height: 1.45;
 }
+.azure-grounding-selector {
+  margin: 8px 0; border: 1px solid rgba(37, 99, 169, .2); border-radius: 11px;
+  background: #f7fbff;
+}
+.azure-grounding-selector summary {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 11px; color: #174f8a; cursor: pointer; list-style: none;
+}
+.azure-grounding-selector summary::-webkit-details-marker { display: none; }
+.azure-grounding-selector summary > span { display: flex; align-items: center; gap: 7px; }
+.azure-grounding-selector summary strong { font-size: 10px; }
+.azure-grounding-selector summary small { color: #4c7096; font-size: 9px; }
+.azure-grounding-options { display: grid; gap: 4px; padding: 0 9px 9px; }
+.azure-grounding-options label {
+  display: grid; grid-template-columns: auto 1fr; align-items: start; gap: 8px;
+  padding: 8px; border-radius: 8px; background: var(--surface); cursor: pointer;
+}
+.azure-grounding-options label:hover { background: #edf6ff; }
+.azure-grounding-options input { margin-top: 2px; accent-color: #2563a9; }
+.azure-grounding-options label span { display: grid; gap: 2px; }
+.azure-grounding-options label strong { color: var(--text); font-size: 10px; }
+.azure-grounding-options label small, .azure-grounding-options p { margin: 0; color: var(--muted); font-size: 9px; }
+.dark .azure-grounding-selector { border-color: #315a80; background: #173652; }
+.dark .azure-grounding-options label:hover { background: #1c4568; }
 .source-boundary-notice.online {
   color: #174f8a; border-color: #a9c8e8; background: #edf6ff;
 }

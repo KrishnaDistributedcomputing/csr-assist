@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import json
 import time
 
 import httpx
@@ -76,7 +77,7 @@ async def test_search_and_foundry_use_managed_identity(
         transport=httpx.MockTransport(respond),
     )
 
-    sources = await client.search("Cogsdale billing", 3)
+    sources = await client.search("Cogsdale billing", 3, [7, 9, 7])
     generation = await client.generate("Use only [1].")
     alternate_generation = await client.generate(
         "Use only [1].",
@@ -92,6 +93,9 @@ async def test_search_and_foundry_use_managed_identity(
     assert client.foundry_timeout == 10
     assert requests[0].url.params["client_id"] == "client-id"
     assert requests[1].url.params["api-version"] == "2024-07-01"
+    assert json.loads(requests[1].content)["filter"] == (
+        "document_id eq 7 or document_id eq 9"
+    )
     assert timeouts[1] == 120
     assert requests[3].url.path.endswith(
         "/openai/deployments/phi-4-mini/chat/completions"

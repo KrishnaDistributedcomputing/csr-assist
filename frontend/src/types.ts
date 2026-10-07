@@ -11,6 +11,13 @@ export interface DocumentRecord {
   indexed_at?: string;
 }
 
+export interface OnlineDocumentRecord {
+  document_id: number;
+  name: string;
+  relative_path: string;
+  source_url?: string;
+}
+
 export interface Source {
   document_id: number;
   chunk_id: number;

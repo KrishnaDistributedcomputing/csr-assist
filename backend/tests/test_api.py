@@ -180,8 +180,25 @@ def test_online_search_and_foundry_answer(
         "channel": "online",
     }
 
-    async def online_search(_: str, __: int) -> list[dict[str, object]]:
+    selected_searches: list[tuple[str, int, list[int] | None]] = []
+
+    async def online_search(
+        query: str,
+        limit: int,
+        document_ids: list[int] | None = None,
+    ) -> list[dict[str, object]]:
+        selected_searches.append((query, limit, document_ids))
         return [source]
+
+    async def online_documents() -> list[dict[str, object]]:
+        return [
+            {
+                "document_id": 7,
+                "name": "PUBLIC-cogsdale-overview.md",
+                "relative_path": "PUBLIC-cogsdale-overview.md",
+                "source_url": "https://cogsdale.com/",
+            }
+        ]
 
     selected_models: list[str] = []
 
@@ -194,19 +211,26 @@ def test_online_search_and_foundry_answer(
         )
 
     app.state.azure_ai.search = online_search
+    app.state.azure_ai.list_documents = online_documents
     app.state.azure_ai.generate = online_generate
     with TestClient(app) as online_client:
         deployment = online_client.get("/api/deployment").json()
         search = online_client.get(
             "/api/search",
-            params={"q": "Cogsdale utility billing", "source": "online"},
+            params={
+                "q": "Cogsdale utility billing",
+                "source": "online",
+                "document_ids": 7,
+            },
         ).json()
+        available_documents = online_client.get("/api/online/documents").json()
         answer = online_client.post(
             "/api/chat",
             json={
                 "message": "What utility billing services does Cogsdale support?",
                 "source": "online",
                 "model": "gpt-4o-mini",
+                "document_ids": [7],
             },
         ).json()
 
@@ -222,9 +246,14 @@ def test_online_search_and_foundry_answer(
         "billing_basis": "Provisioned search capacity; not token-priced",
     }
     assert search["results"][0]["channel"] == "online"
+    assert available_documents[0]["document_id"] == 7
     assert answer["state"] == "answered"
     assert answer["model"] == "azure-foundry:gpt-4o-mini"
     assert selected_models == ["gpt-4o-mini"]
+    assert selected_searches == [
+        ("Cogsdale utility billing", 8, [7]),
+        ("What utility billing services does Cogsdale support?", 2, [7]),
+    ]
     assert answer["citations"][0]["name"] == "PUBLIC-cogsdale-overview.md"
 
 

@@ -4,6 +4,7 @@ import {
   fireEvent,
   render,
   screen,
+  within,
   waitFor
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
@@ -257,11 +258,11 @@ test("guided demo supports direct feature navigation and restores the workspace"
 
 test("public demo can preview Docker and Azure environments", async () => {
   const currentFetch = vi.mocked(fetch);
-  let chatRequest: Record<string, string> | undefined;
+  let chatRequest: Record<string, unknown> | undefined;
   currentFetch.mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = String(input);
     if (url.includes("/chat")) {
-      chatRequest = JSON.parse(String(init?.body)) as Record<string, string>;
+      chatRequest = JSON.parse(String(init?.body)) as Record<string, unknown>;
       return new Response(JSON.stringify({
         state: "answered",
         text: "Grounded answer [1]",
@@ -275,7 +276,20 @@ test("public demo can preview Docker and Azure environments", async () => {
         headers: { "Content-Type": "application/json" }
       });
     }
-    const value = url.includes("/deployment")
+    const value = url.includes("/online/documents")
+      ? [
+          {
+            document_id: 7,
+            name: "PUBLIC-cogsdale-overview.md",
+            relative_path: "PUBLIC-cogsdale-overview.md"
+          },
+          {
+            document_id: 8,
+            name: "SAMPLE-support-policy.md",
+            relative_path: "SAMPLE-support-policy.md"
+          }
+        ]
+      : url.includes("/deployment")
       ? {
           read_only_demo: true,
           online_available: true,
@@ -350,6 +364,12 @@ test("public demo can preview Docker and Azure environments", async () => {
   expect(
     screen.getAllByText(/approved Azure-indexed sources/i).length
   ).toBeGreaterThan(0);
+  const assistantPanel = within(screen.getByLabelText("Mira assistant"));
+  fireEvent.click(assistantPanel.getByText("Grounding documents"));
+  fireEvent.click(
+    assistantPanel.getByRole("checkbox", { name: /SAMPLE-support-policy\.md/ })
+  );
+  expect(assistantPanel.getByText("1 of 2 selected")).toBeInTheDocument();
   fireEvent.change(screen.getByLabelText("Azure LLM model"), {
     target: { value: "gpt-4o-mini" }
   });
@@ -364,7 +384,8 @@ test("public demo can preview Docker and Azure environments", async () => {
   await waitFor(() => {
     expect(chatRequest).toMatchObject({
       source: "online",
-      model: "gpt-4o-mini"
+      model: "gpt-4o-mini",
+      document_ids: [7]
     });
   });
 });
@@ -470,7 +491,20 @@ test("switches document search to Azure AI online mode", async () => {
   const currentFetch = vi.mocked(fetch);
   currentFetch.mockImplementation(async (input: RequestInfo | URL) => {
     const url = String(input);
-    const value = url.includes("/deployment")
+    const value = url.includes("/online/documents")
+      ? [
+          {
+            document_id: 7,
+            name: "PUBLIC-cogsdale-overview.md",
+            relative_path: "PUBLIC-cogsdale-overview.md"
+          },
+          {
+            document_id: 8,
+            name: "SAMPLE-support-policy.md",
+            relative_path: "SAMPLE-support-policy.md"
+          }
+        ]
+      : url.includes("/deployment")
       ? {
           read_only_demo: true,
           online_available: true,
@@ -513,6 +547,13 @@ test("switches document search to Azure AI online mode", async () => {
     screen.getByText(/Changing to Online does not upload or synchronize local files/i)
   ).toBeInTheDocument();
   fireEvent.click(screen.getByRole("tab", { name: "Sources" }));
+  const sourcesPanel = within(
+    screen.getByRole("tabpanel", { name: "Sources" })
+  );
+  fireEvent.click(sourcesPanel.getByText("Grounding documents"));
+  fireEvent.click(
+    sourcesPanel.getByRole("checkbox", { name: /SAMPLE-support-policy\.md/ })
+  );
   fireEvent.change(screen.getByLabelText("Search documents"), {
     target: { value: "Cogsdale" }
   });
@@ -522,6 +563,7 @@ test("switches document search to Azure AI online mode", async () => {
   expect(
     currentFetch.mock.calls.some(([input]) =>
       String(input).includes("/search?q=Cogsdale&source=online")
+      && String(input).includes("document_ids=7")
     )
   ).toBe(true);
 });
