@@ -271,7 +271,13 @@ class Database:
         """Return document status ordered by relative path."""
         with self.connect() as db:
             rows = db.execute(
-                "SELECT * FROM documents ORDER BY relative_path"
+                """
+                SELECT d.*, COUNT(f.id) AS key_fact_count
+                FROM documents d
+                LEFT JOIN key_facts f ON f.document_id = d.id
+                GROUP BY d.id
+                ORDER BY d.relative_path
+                """
             ).fetchall()
         return [dict(row) for row in rows]
 

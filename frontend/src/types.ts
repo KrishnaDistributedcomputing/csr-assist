@@ -7,6 +7,8 @@ export interface DocumentRecord {
   status: "pending" | "processing" | "ready" | "error" | "unsupported";
   error?: string;
   chunk_count: number;
+  key_fact_count: number;
+  indexed_at?: string;
 }
 
 export interface Source {

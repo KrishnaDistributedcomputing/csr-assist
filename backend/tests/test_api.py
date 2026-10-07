@@ -52,6 +52,10 @@ def test_search_and_insufficient_evidence(
     client.post("/api/scan")
     results = client.get("/api/search", params={"q": "proof purchase"}).json()
     assert results["results"][0]["name"] == "policy.txt"
+    documents = client.get("/api/documents").json()
+    assert documents[0]["chunk_count"] == 1
+    assert documents[0]["key_fact_count"] >= 1
+    assert documents[0]["indexed_at"]
 
     answer = client.post("/api/chat", json={"message": "holiday hours"}).json()
     assert answer["state"] == "insufficient-evidence"

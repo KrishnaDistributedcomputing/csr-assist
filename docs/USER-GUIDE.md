@@ -80,6 +80,12 @@ before secondary model, history, and analytics data.
 Search progress reports cache, key-fact, full-excerpt, ranking, and citation
 phases while work is pending.
 
+The **Indexed data** section appears below the listed Offline documents. It
+summarizes search-ready documents, excerpts, extracted facts, and total source
+size. Each document row reports its excerpt count, fact count, source size, and
+most recent index time. These values come from the SQLite index and update
+after a scan or sample refresh.
+
 ### Public demo behavior
 
 The
@@ -162,23 +168,23 @@ model.
 Use the assistant navigation to switch between **Chat** and **History**:
 
 1. Open **Chat** to ask a question or start from the prompt gallery.
-2. Choose **Suggested prompts** for the three common tasks or **All prompts**
-   for the complete gallery. **Browse prompt gallery** also opens the complete
-   list.
+2. Choose **Document prompts** for three source-aware tasks or **All document
+   prompts** for the complete gallery. **Browse document prompt gallery** also
+   opens the complete list.
 3. Select a prompt to place its text in the large composer at the bottom of
    the assistant. You can review or edit the text before sending it.
 4. Select the send button to ask Mira. The button remains unavailable until
    the composer contains text.
 
-Suggested prompts include:
+Prompts use the selected source name when you have opened evidence. Otherwise,
+they use the first indexed Offline document or the first returned Azure
+document. The gallery offers document-specific summaries, customer-ready
+drafts, action lists, supporting details, missing-information checks, and
+conflict reviews. With multiple indexed documents, the conflict prompt expands
+to compare instructions across the collection.
 
-* What is the return policy?
-* Draft a customer-ready response
-* Are there conflicting instructions?
-
-The complete gallery also includes prompts for summaries, source support, and
-missing information. Mira keeps the composer at the bottom of **Chat** while
-you review prompts and answers.
+Mira keeps the composer at the bottom of **Chat** while you review prompts and
+answers.
 
 The optional local model selector controls generated Offline answers. Models
 marked **Setup required** are approved but not installed.

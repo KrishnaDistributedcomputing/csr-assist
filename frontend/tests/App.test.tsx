@@ -61,8 +61,10 @@ test("renders the document workspace and Mira", async () => {
   expect(screen.getByLabelText("Mira assistant")).toBeInTheDocument();
   expect(await screen.findByText("No documents indexed")).toBeInTheDocument();
   expect(screen.getByText("Hello! How can I help?")).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("tab", { name: "All prompts" }));
-  expect(screen.getByText("Summarize the key points")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("tab", { name: "All document prompts" }));
+  expect(
+    screen.getByText("What information is missing from the indexed documents?")
+  ).toBeInTheDocument();
   expect(screen.getAllByRole("button", { name: /Online/ })[0]).toBeDisabled();
   expect(screen.queryByLabelText("Token usage dashboard")).not.toBeInTheDocument();
   fireEvent.click(screen.getByRole("tab", { name: /Analytics/ }));
@@ -111,6 +113,41 @@ test("workspace tabs support keyboard navigation", async () => {
   expect(
     await screen.findByLabelText("Data and accessibility compliance")
   ).toBeInTheDocument();
+});
+
+test("shows indexed data and document-aware prompts", async () => {
+  const currentFetch = vi.mocked(fetch);
+  const defaultFetch = currentFetch.getMockImplementation();
+  currentFetch.mockImplementation((input: RequestInfo | URL, init?: RequestInit) => {
+    if (String(input).includes("/documents")) {
+      return Promise.resolve(new Response(JSON.stringify([{
+        id: 7,
+        relative_path: "policies/returns.md",
+        name: "returns.md",
+        extension: ".md",
+        size_bytes: 2048,
+        status: "ready",
+        chunk_count: 4,
+        key_fact_count: 6,
+        indexed_at: "2026-10-06 20:00:00"
+      }]), {
+        status: 200,
+        headers: { "Content-Type": "application/json" }
+      }));
+    }
+    if (!defaultFetch) throw new Error("Default fetch mock is unavailable");
+    return defaultFetch(input, init);
+  });
+
+  render(<App />);
+  expect(await screen.findByLabelText("Indexed data")).toBeInTheDocument();
+  expect(screen.getByText("1 search-ready documents")).toBeInTheDocument();
+  expect(screen.getByText('Summarize "returns.md"')).toBeInTheDocument();
+  expect(
+    screen.getByText('Draft a customer-ready response using "returns.md"')
+  ).toBeInTheDocument();
+  expect(screen.getByLabelText("Indexed data")).toHaveTextContent("6");
+  expect(screen.getByLabelText("Indexed data")).toHaveTextContent("2.0 KB");
 });
 
 test("document search does not disable a prepared chat message", async () => {

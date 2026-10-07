@@ -39,17 +39,6 @@ import type {
   UsageDashboard
 } from "./types";
 
-const suggestedPrompts = [
-  "What is the return policy?",
-  "Draft a customer-ready response",
-  "Are there conflicting instructions?"
-];
-const allPrompts = [
-  ...suggestedPrompts,
-  "Summarize the key points",
-  "Which document supports this answer?",
-  "What information is missing?"
-];
 const searchProgressMessages = [
   "Searching extracted key facts",
   "Checking full document excerpts",
@@ -70,6 +59,24 @@ const onlineChatProgressMessages = [
 ];
 const ESTIMATED_INPUT_TOKENS = 2000;
 const ESTIMATED_OUTPUT_TOKENS = 120;
+
+function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatIndexedAt(value?: string) {
+  if (!value) return "Not indexed";
+  const parsed = new Date(`${value.replace(" ", "T")}Z`);
+  return Number.isNaN(parsed.getTime())
+    ? value
+    : parsed.toLocaleString([], {
+        dateStyle: "medium",
+        timeStyle: "short"
+      });
+}
+
 const tourSteps = [
   {
     target: "environment",
@@ -273,6 +280,35 @@ export default function App() {
     dataSource === "online"
       ? "Online mode searches only approved Azure-indexed sources. Offline documents are isolated and are not available in this mode."
       : "Offline mode searches only the local document index. Azure-hosted sources are not available in this mode.";
+  const indexedDocuments = documents.filter(
+    (document) => document.status === "ready"
+  );
+  const promptDocument = preview?.name ?? (
+    dataSource === "online"
+      ? results[0]?.name
+      : indexedDocuments[0]?.name
+  );
+  const promptScope = promptDocument
+    ? `"${promptDocument}"`
+    : dataSource === "online"
+      ? "the approved Azure documents"
+      : "the indexed documents";
+  const promptDocumentCount = dataSource === "online"
+    ? new Set(results.map((result) => result.document_id)).size
+    : indexedDocuments.length;
+  const suggestedPrompts = [
+    `Summarize ${promptScope}`,
+    `Draft a customer-ready response using ${promptScope}`,
+    promptDocumentCount > 1
+      ? "Are there conflicting instructions across the indexed documents?"
+      : `Are any instructions in ${promptScope} unclear or conflicting?`
+  ];
+  const allPrompts = [
+    ...suggestedPrompts,
+    `List the customer actions described in ${promptScope}`,
+    `Which details in ${promptScope} support the answer?`,
+    `What information is missing from ${promptScope}?`
+  ];
   const visiblePrompts =
     promptView === "suggested" ? suggestedPrompts : allPrompts;
   const selectedModelId =
@@ -290,6 +326,18 @@ export default function App() {
           * selectedModelDetails.output_cost_per_million
         ) / 1_000_000
       : null;
+  const indexedExcerpts = indexedDocuments.reduce(
+    (total, document) => total + document.chunk_count,
+    0
+  );
+  const indexedFacts = indexedDocuments.reduce(
+    (total, document) => total + (document.key_fact_count ?? 0),
+    0
+  );
+  const indexedBytes = indexedDocuments.reduce(
+    (total, document) => total + document.size_bytes,
+    0
+  );
 
   async function refresh() {
     try {
@@ -733,7 +781,7 @@ export default function App() {
                   className={promptView === "suggested" ? "active" : ""}
                   onClick={() => setPromptView("suggested")}
                 >
-                  Suggested prompts
+                  Document prompts
                 </button>
                 <button
                   role="tab"
@@ -741,7 +789,7 @@ export default function App() {
                   className={promptView === "all" ? "active" : ""}
                   onClick={() => setPromptView("all")}
                 >
-                  All prompts
+                  All document prompts
                 </button>
               </div>
               <div className="prompt-list">
@@ -763,7 +811,7 @@ export default function App() {
                 className="prompt-gallery-link"
                 onClick={() => setPromptView("all")}
               >
-                <Sparkles size={16} /> Browse prompt gallery
+                <Sparkles size={16} /> Browse document prompt gallery
               </button>
             </div>
           )}
@@ -1242,6 +1290,39 @@ export default function App() {
                   <span>Results will include only approved online sources.</span>
                 </div>
               ) : null}
+              {dataSource === "offline" && documents.length > 0 && (
+                <section className="indexed-data" aria-label="Indexed data">
+                  <div className="indexed-data-heading">
+                    <div>
+                      <p className="eyebrow">Search index</p>
+                      <h3>Indexed data</h3>
+                    </div>
+                    <span>{indexedDocuments.length} search-ready documents</span>
+                  </div>
+                  <div className="indexed-data-summary">
+                    <div><span>Documents</span><strong>{indexedDocuments.length}</strong></div>
+                    <div><span>Excerpts</span><strong>{indexedExcerpts}</strong></div>
+                    <div><span>Extracted facts</span><strong>{indexedFacts}</strong></div>
+                    <div><span>Source size</span><strong>{formatBytes(indexedBytes)}</strong></div>
+                  </div>
+                  <div className="indexed-document-list">
+                    {documents.map((document) => (
+                      <article key={document.id}>
+                        <div>
+                          <strong>{document.name}</strong>
+                          <span>{document.relative_path}</span>
+                        </div>
+                        <dl>
+                          <div><dt>Excerpts</dt><dd>{document.chunk_count}</dd></div>
+                          <div><dt>Facts</dt><dd>{document.key_fact_count ?? 0}</dd></div>
+                          <div><dt>Size</dt><dd>{formatBytes(document.size_bytes)}</dd></div>
+                          <div><dt>Indexed</dt><dd>{formatIndexedAt(document.indexed_at)}</dd></div>
+                        </dl>
+                      </article>
+                    ))}
+                  </div>
+                </section>
+              )}
               {results.length > 0 && (
                 <div className="results">
                   <h3>Search results</h3>
