@@ -9,6 +9,7 @@ import {
   Menu,
   Moon,
   RefreshCw,
+  Rocket,
   Search,
   Send,
   Sparkles,
@@ -320,12 +321,14 @@ const tourSteps = [
 const AnalyticsPanel = lazy(() => import("./AnalyticsPanel"));
 const ArchitecturePanel = lazy(() => import("./ArchitecturePanel"));
 const CompliancePanel = lazy(() => import("./CompliancePanel"));
-type WorkspaceTab = "chat" | "sources" | "analytics" | "architecture" | "compliance";
+const GoLivePanel = lazy(() => import("./GoLivePanel"));
+type WorkspaceTab = "chat" | "sources" | "analytics" | "architecture" | "go-live" | "compliance";
 const workspaceTabs: WorkspaceTab[] = [
   "chat",
   "sources",
   "analytics",
   "architecture",
+  "go-live",
   "compliance"
 ];
 
@@ -1520,6 +1523,18 @@ export default function App() {
               <Menu size={15} /> Architecture
             </button>
             <button
+              id="workspace-tab-go-live"
+              role="tab"
+              aria-selected={workspaceTab === "go-live"}
+              aria-controls="workspace-panel-go-live"
+              tabIndex={workspaceTab === "go-live" ? 0 : -1}
+              className={workspaceTab === "go-live" ? "active" : ""}
+              onClick={() => setWorkspaceTab("go-live")}
+              onKeyDown={handleWorkspaceTabKeyDown}
+            >
+              <Rocket size={15} /> Go-Live
+            </button>
+            <button
               id="workspace-tab-compliance"
               role="tab"
               aria-selected={workspaceTab === "compliance"}
@@ -1759,6 +1774,18 @@ export default function App() {
                   source={dataSource}
                   readOnlyDemo={deployment.read_only_demo}
                 />
+              </Suspense>
+            </div>
+          )}
+          {workspaceTab === "go-live" && (
+            <div
+              id="workspace-panel-go-live"
+              role="tabpanel"
+              aria-labelledby="workspace-tab-go-live"
+              data-tour="go-live"
+            >
+              <Suspense fallback={<PanelLoading label="Loading go-live plan" />}>
+                <GoLivePanel deployment={deployment} />
               </Suspense>
             </div>
           )}

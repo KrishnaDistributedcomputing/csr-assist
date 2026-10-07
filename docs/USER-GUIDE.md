@@ -2,21 +2,25 @@
 title: CSR Assist User Guide
 description: Guide to document search, Mira answers, feedback, history, analytics, and administration
 author: CSR Assist team
-ms.date: 2026-10-06
+ms.date: 2026-10-07
 ms.topic: how-to
 ---
 
 ## Navigate the workspace
 
-The primary navigation contains four sections:
+The primary navigation contains six sections:
 
-* **Answers** searches sources and previews exact excerpts.
-* **Analytics** reports request, latency, cache, token, and feedback metrics.
-* **Architecture** describes document processing and response flows.
-* **Compliance** shows the data boundary and customer responsibilities for the
-  selected Online or Offline mode.
+* Use **Assistant** for grounded chat and source-aware prompts.
+* Use **Sources** to search sources and preview exact excerpts.
+* Use **Analytics** to review request, latency, cache, token, and feedback
+  metrics.
+* Use **Go-Live** to organize Day 2 operating gates, checks, incidents, and
+  handoff.
+* Use **Architecture** to review document processing and response flows.
+* Use **Compliance** to review the data boundary and customer responsibilities
+  for the selected Online or Offline mode.
 
-All four sections remain visible in a two-column grid on small screens. The
+All six sections remain available on small screens. The
 header displays the active Online or Offline mode, and the **Ask Mira** button
 opens the mobile assistant.
 
@@ -234,6 +238,51 @@ answers.
 
 The optional local model selector controls generated Offline answers. Models
 marked **Setup required** are approved but not installed.
+
+## Go-Live
+
+Open **Go-Live** during launch and hypercare to coordinate Day 2 operations.
+The tab organizes the operating schedule, named responsibilities, health gates,
+validation checks, incident thresholds, rollback decisions, success measures,
+and handoff status in one operator-focused view.
+
+Use the tab with the authoritative platform tools:
+
+* Check Azure Container Apps revisions, replicas, metrics, and logs for the
+  Online deployment.
+* Check Azure AI Search availability, index inventory, selected document
+  scopes, query behavior, and quota.
+* Check the allowlisted Azure AI Foundry deployment, quota, token use, and
+  cited fallback rate.
+* Check Docker container health, logs, persistent storage, and the local
+  `/api/health` response.
+* Check the six bundled Ollama models, the embedding model, vector count, and
+  local CPU response times when the Docker preview or local generation is in
+  scope.
+* Use **Sources** to reconcile documents, index details, scan state, and Azure
+  grounding selections.
+* Use **Analytics** to review requests, average latency, cache hit rate, cached
+  answers, token use, per-model activity, corpus revision, and feedback.
+* Use **Compliance** to review implemented controls and customer-owned
+  security, retention, networking, and incident-response decisions.
+
+The status gates use three operating states:
+
+* Green permits the next planned traffic cohort after health, grounding, scope,
+  security, and cost checks pass.
+* Amber holds the current cohort while an owner investigates a bounded
+  degradation.
+* Red stops expansion and starts incident or rollback procedures.
+
+Record evidence outside the application in the approved operations and
+incident systems. The tab does not change Container Apps traffic, restore an
+index, restart Docker, install a model, approve a document, or declare
+compliance.
+
+For the hour-by-hour schedule, role matrix, exact readiness and health gates,
+monitoring checks, document and cache tests, severity definitions, rollback
+procedure, success metrics, handoff, and hypercare exit criteria, follow the
+[Day 2 go-live plan](./GO-LIVE-PLAN.md).
 
 ### Review the selected-model cost
 

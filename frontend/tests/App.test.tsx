@@ -85,6 +85,14 @@ test("renders the document workspace and Mira", async () => {
     await screen.findByLabelText("System architecture", {}, { timeout: 5000 })
   ).toBeInTheDocument();
   expect(screen.getByLabelText("LLM token cost matrix")).toBeInTheDocument();
+  fireEvent.click(screen.getByRole("tab", { name: /Go-Live/ }));
+  expect(
+    await screen.findByLabelText("Day 2 go-live plan", {}, { timeout: 5000 })
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("heading", { name: "Day 2 go-live command center" })
+  ).toBeInTheDocument();
+  expect(screen.getByText("Rollback triggers and sequence")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("tab", { name: /Compliance/ }));
   expect(
     await screen.findByLabelText(
@@ -106,7 +114,7 @@ test("renders the document workspace and Mira", async () => {
   fireEvent.click(screen.getByRole("tab", { name: /History/ }));
   expect(screen.getByText("No history yet")).toBeInTheDocument();
   expect(screen.queryByLabelText("Message Mira")).not.toBeInTheDocument();
-}, 15000);
+}, 30000);
 
 test("workspace tabs support keyboard navigation", async () => {
   render(<App />);
