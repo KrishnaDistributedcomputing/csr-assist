@@ -97,6 +97,7 @@ test("renders the document workspace and Mira", async () => {
   expect(
     screen.getByRole("link", { name: /Official standard/i })
   ).toHaveAttribute("href", expect.stringContaining("11-software"));
+  fireEvent.click(screen.getByRole("tab", { name: "Assistant" }));
   fireEvent.click(screen.getByRole("tab", { name: /History/ }));
   expect(screen.getByText("No history yet")).toBeInTheDocument();
   expect(screen.queryByLabelText("Message Mira")).not.toBeInTheDocument();
@@ -104,9 +105,9 @@ test("renders the document workspace and Mira", async () => {
 
 test("workspace tabs support keyboard navigation", async () => {
   render(<App />);
-  const answers = screen.getByRole("tab", { name: "Answers" });
-  answers.focus();
-  fireEvent.keyDown(answers, { key: "End" });
+  const assistant = screen.getByRole("tab", { name: "Assistant" });
+  assistant.focus();
+  fireEvent.keyDown(assistant, { key: "End" });
 
   const compliance = screen.getByRole("tab", { name: "Compliance" });
   expect(compliance).toHaveAttribute("aria-selected", "true");
@@ -164,12 +165,14 @@ test("document search does not disable a prepared chat message", async () => {
   });
 
   render(<App />);
+  fireEvent.click(screen.getByRole("tab", { name: "Sources" }));
   fireEvent.change(screen.getByLabelText("Search documents"), {
     target: { value: "return policy" }
   });
   fireEvent.click(screen.getByRole("button", { name: "Search" }));
   expect(screen.getByRole("button", { name: "Search" })).toBeDisabled();
 
+  fireEvent.click(screen.getByRole("tab", { name: "Assistant" }));
   fireEvent.change(screen.getByLabelText("Message Mira"), {
     target: { value: "What is the return policy?" }
   });
@@ -440,6 +443,7 @@ test("shows document search progress while the request is pending", async () => 
   });
 
   render(<App />);
+  fireEvent.click(screen.getByRole("tab", { name: "Sources" }));
   fireEvent.change(screen.getByLabelText("Search documents"), {
     target: { value: "return policy" }
   });
@@ -504,7 +508,7 @@ test("switches document search to Azure AI online mode", async () => {
   expect(
     screen.getByText(/Changing to Online does not upload or synchronize local files/i)
   ).toBeInTheDocument();
-  fireEvent.click(screen.getByRole("tab", { name: "Answers" }));
+  fireEvent.click(screen.getByRole("tab", { name: "Sources" }));
   fireEvent.change(screen.getByLabelText("Search documents"), {
     target: { value: "Cogsdale" }
   });

@@ -203,7 +203,7 @@ const tourSteps = [
       "Docker keeps retrieval and optional Ollama inference local.",
       "Azure uses approved Azure AI Search and Foundry services."
     ],
-    workspaceTab: "answers"
+    workspaceTab: "sources"
   },
   {
     target: "source",
@@ -214,7 +214,7 @@ const tourSteps = [
       "Offline and Online indexes remain isolated.",
       "Changing the preview never copies or uploads documents."
     ],
-    workspaceTab: "answers"
+    workspaceTab: "sources"
   },
   {
     target: "search",
@@ -225,7 +225,7 @@ const tourSteps = [
       "Progress messages show retrieval and ranking activity.",
       "Channel badges distinguish local and Azure results."
     ],
-    workspaceTab: "answers"
+    workspaceTab: "sources"
   },
   {
     target: "evidence",
@@ -236,7 +236,7 @@ const tourSteps = [
       "Document metadata identifies the source and location.",
       "Mira citations reopen the same reviewable evidence."
     ],
-    workspaceTab: "answers"
+    workspaceTab: "sources"
   },
   {
     target: "analytics",
@@ -280,7 +280,7 @@ const tourSteps = [
       "Docker offers installed Ollama models or fast retrieval without an LLM.",
       "Azure shows allowlisted Foundry deployments and estimated token cost."
     ],
-    workspaceTab: "answers"
+    workspaceTab: "chat"
   },
   {
     target: "prompts",
@@ -291,7 +291,7 @@ const tourSteps = [
       "Draft responses, compare instructions, summarize, or identify gaps.",
       "Prompt selection never submits automatically."
     ],
-    workspaceTab: "answers"
+    workspaceTab: "chat"
   },
   {
     target: "composer",
@@ -302,7 +302,7 @@ const tourSteps = [
       "Live stages distinguish retrieval, generation, and citation work.",
       "Errors remain explicit and can be dismissed before retrying."
     ],
-    workspaceTab: "answers"
+    workspaceTab: "chat"
   },
   {
     target: "assistant",
@@ -313,15 +313,16 @@ const tourSteps = [
       "Source cards open the exact excerpts used by Mira.",
       "History is private in production and disabled in the public demo."
     ],
-    workspaceTab: "answers"
+    workspaceTab: "chat"
   }
 ] as const;
 const AnalyticsPanel = lazy(() => import("./AnalyticsPanel"));
 const ArchitecturePanel = lazy(() => import("./ArchitecturePanel"));
 const CompliancePanel = lazy(() => import("./CompliancePanel"));
-type WorkspaceTab = "answers" | "analytics" | "architecture" | "compliance";
+type WorkspaceTab = "chat" | "sources" | "analytics" | "architecture" | "compliance";
 const workspaceTabs: WorkspaceTab[] = [
-  "answers",
+  "chat",
+  "sources",
   "analytics",
   "architecture",
   "compliance"
@@ -339,7 +340,6 @@ function PanelLoading({ label }: { label: string }) {
 export default function App() {
   const widget = new URLSearchParams(window.location.search).get("widget") === "1";
   const [dark, setDark] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(widget);
   const [documents, setDocuments] = useState<DocumentRecord[]>([]);
   const [deployment, setDeployment] = useState<DeploymentInfo>({
     read_only_demo: false,
@@ -363,7 +363,7 @@ export default function App() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [assistantTab, setAssistantTab] = useState<"chat" | "history">("chat");
   const [promptView, setPromptView] = useState<"suggested" | "all">("suggested");
-  const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>("answers");
+  const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>("chat");
   const [usage, setUsage] = useState<UsageDashboard | null>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [usageLoaded, setUsageLoaded] = useState(false);
@@ -593,15 +593,6 @@ export default function App() {
       });
   }, [workspaceTab, usageLoaded]);
 
-  useEffect(() => {
-    function receive(event: MessageEvent) {
-      if (event.origin !== window.location.origin) return;
-      if (event.data === "csr-assist-close") setMobileOpen(false);
-    }
-    window.addEventListener("message", receive);
-    return () => window.removeEventListener("message", receive);
-  }, []);
-
   async function handleSearch(event: FormEvent) {
     event.preventDefault();
     if (!query.trim()) return;
@@ -780,13 +771,17 @@ export default function App() {
           </div>
           <small>Your friendly document guide</small>
         </div>
-        <button
-          className="icon-button mobile-only"
-          aria-label="Close Mira"
-          onClick={() => setMobileOpen(false)}
-        >
-          <X />
-        </button>
+        {widget && (
+          <button
+            className="icon-button"
+            aria-label="Close Mira"
+            onClick={() =>
+              window.parent.postMessage("csr-assist-close", window.location.origin)
+            }
+          >
+            <X />
+          </button>
+        )}
       </header>
       <div className="assistant-context">
         <div className="assistant-context-heading">
@@ -1281,7 +1276,9 @@ export default function App() {
         <section className="documents-pane" id="workspace-content">
           <div className="workspace-heading">
             <div>
-              <p className="eyebrow">Document workspace</p>
+              <p className="eyebrow">
+                {workspaceTab === "chat" ? "Grounded assistant" : "Document workspace"}
+              </p>
               <h1>
                 {dataSource === "online"
                   ? "Search approved Azure knowledge"
@@ -1297,7 +1294,7 @@ export default function App() {
                   : "Search, review, and cite documents without sending data anywhere."}
               </p>
             </div>
-            {workspaceTab === "answers" && (
+            {workspaceTab === "sources" && (
               dataSource === "online" ? (
                 <div className="managed-source-note">
                   <Cloud size={19} />
@@ -1346,16 +1343,28 @@ export default function App() {
             data-tour="workspace"
           >
             <button
-              id="workspace-tab-answers"
+              id="workspace-tab-chat"
               role="tab"
-              aria-selected={workspaceTab === "answers"}
-              aria-controls="workspace-panel-answers"
-              tabIndex={workspaceTab === "answers" ? 0 : -1}
-              className={workspaceTab === "answers" ? "active" : ""}
-              onClick={() => setWorkspaceTab("answers")}
+              aria-selected={workspaceTab === "chat"}
+              aria-controls="workspace-panel-chat"
+              tabIndex={workspaceTab === "chat" ? 0 : -1}
+              className={workspaceTab === "chat" ? "active" : ""}
+              onClick={() => setWorkspaceTab("chat")}
               onKeyDown={handleWorkspaceTabKeyDown}
             >
-              <Search size={15} /> Answers
+              <Bot size={15} /> Assistant
+            </button>
+            <button
+              id="workspace-tab-sources"
+              role="tab"
+              aria-selected={workspaceTab === "sources"}
+              aria-controls="workspace-panel-sources"
+              tabIndex={workspaceTab === "sources" ? 0 : -1}
+              className={workspaceTab === "sources" ? "active" : ""}
+              onClick={() => setWorkspaceTab("sources")}
+              onKeyDown={handleWorkspaceTabKeyDown}
+            >
+              <FileSearch size={15} /> Sources
             </button>
             <button
               id="workspace-tab-analytics"
@@ -1394,11 +1403,22 @@ export default function App() {
               <Check size={15} /> Compliance
             </button>
           </div>
+          {workspaceTab === "chat" && (
+            <div
+              id="workspace-panel-chat"
+              className="workspace-chat"
+              role="tabpanel"
+              aria-labelledby="workspace-tab-chat"
+              data-tour="assistant"
+            >
+              {assistant}
+            </div>
+          )}
           <div
-            id="workspace-panel-answers"
+            id="workspace-panel-sources"
             role="tabpanel"
-            aria-labelledby="workspace-tab-answers"
-            hidden={workspaceTab !== "answers"}
+            aria-labelledby="workspace-tab-sources"
+            hidden={workspaceTab !== "sources"}
           >
           <div className="source-mode-bar" data-tour="source">
             <div>
@@ -1613,26 +1633,17 @@ export default function App() {
             </div>
           )}
         </section>
-        <aside className="desktop-assistant" data-tour="assistant">{assistant}</aside>
       </div>
-      <button
-        className="mira-fab mobile-only"
-        aria-label="Open Mira"
-        data-tour="assistant"
-        onClick={() => setMobileOpen(true)}
-      >
-        <Bot size={20} />
-        <span>Ask Mira</span>
-      </button>
-      {mobileOpen && (
-        <div className="mobile-drawer mobile-only">
-          <button
-            className="drawer-backdrop"
-            aria-label="Close Mira"
-            onClick={() => setMobileOpen(false)}
-          />
-          {assistant}
-        </div>
+      {workspaceTab !== "chat" && (
+        <button
+          className="mira-fab mobile-only"
+          aria-label="Open Chat"
+          data-tour="assistant"
+          onClick={() => setWorkspaceTab("chat")}
+        >
+          <Bot size={20} />
+          <span>Open Chat</span>
+        </button>
       )}
       {tourStep != null && (
         <div

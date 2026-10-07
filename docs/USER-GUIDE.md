@@ -167,7 +167,9 @@ model.
 
 Use the assistant navigation to switch between **Chat** and **History**:
 
-1. Open **Chat** to ask a question or start from the prompt gallery.
+1. Open **Assistant** to ask a question or start from the prompt gallery.
+   Chat now uses the full workspace width so answers, progress, citations, and
+   the composer remain visible without opening a separate drawer.
 2. Choose **Document prompts** for three source-aware tasks or **All document
    prompts** for the complete gallery. **Browse document prompt gallery** also
    opens the complete list.
@@ -175,6 +177,12 @@ Use the assistant navigation to switch between **Chat** and **History**:
    the assistant. You can review or edit the text before sending it.
 4. Select the send button to ask Mira. The button remains unavailable until
    the composer contains text.
+
+Use **Sources** for document search, indexed-data details, search results, and
+exact excerpt previews. Keeping those controls in a separate workspace tab
+prevents long document lists and empty previews from pushing chat below the
+fold. **Analytics**, **Architecture**, and **Compliance** retain their focused
+operational views.
 
 While a request is pending, Mira displays an estimated behind-the-scenes flow
 instead of a single rotating label. The panel shows:

@@ -122,7 +122,7 @@ select:focus-visible {
 }
 .icon-button:hover { background: rgba(255,255,255,.12); }
 .error-banner { padding: 10px 28px; color: #8f1e1e; background: #fee8e8; }
-.workspace { display: grid; grid-template-columns: minmax(0, 1fr) 390px; min-height: calc(100vh - 68px); }
+.workspace { display: grid; grid-template-columns: minmax(0, 1fr); min-height: calc(100vh - 68px); }
 .documents-pane { min-width: 0; padding: 30px clamp(22px, 3vw, 44px) 44px; overflow: hidden; }
 .workspace-heading { display: flex; justify-content: space-between; align-items: flex-end; gap: 20px; }
 .workspace-heading h1 { max-width: 760px; margin: 3px 0 7px; color: var(--navy); font-size: clamp(27px, 3vw, 40px); letter-spacing: -.035em; line-height: 1.08; }
@@ -130,6 +130,16 @@ select:focus-visible {
 .workspace-tabs { display: flex; gap: 6px; margin-top: 22px; }
 .workspace-tabs button { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 9px 13px; color: var(--muted); border: 1px solid var(--border); border-radius: 9px; background: var(--surface); font-size: 12px; font-weight: 700; }
 .workspace-tabs button.active { color: white; border-color: var(--teal); background: var(--teal); }
+.workspace-chat { margin-top: 16px; }
+.workspace-chat .assistant-panel {
+  position: relative; top: auto; height: min(760px, calc(100vh - 230px)); min-height: 560px;
+  overflow: hidden; border: 1px solid var(--border); border-radius: 16px;
+  box-shadow: 0 12px 35px rgba(21, 51, 68, .07);
+}
+.workspace-chat .conversation > div,
+.workspace-chat .chat-form {
+  width: min(100%, 920px); margin-right: auto; margin-left: auto;
+}
 .managed-source-note, .upload-status {
   display: flex; align-items: center; gap: 9px; padding: 10px 12px;
   color: var(--muted); border: 1px solid var(--border); border-radius: 11px;
@@ -283,7 +293,6 @@ select:focus-visible {
 .location { color: var(--muted); font-size: 12px; }
 .excerpt { margin-top: 22px; line-height: 1.75; white-space: pre-wrap; }
 .empty { min-height: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 30px; color: var(--muted); text-align: center; }
-.desktop-assistant { border-left: 1px solid var(--border); background: var(--surface); box-shadow: -12px 0 35px rgba(21, 51, 68, .05); }
 .assistant-panel { position: sticky; top: 0; display: flex; flex-direction: column; height: calc(100vh - 72px); background: var(--surface); }
 .assistant-header { min-height: 72px; padding: 16px 18px; border-bottom: 1px solid var(--border); }
 .assistant-sparkle {
@@ -613,7 +622,6 @@ select:focus-visible {
 .widget .assistant-panel { height: 100vh; }
 
 @media (max-width: 1100px) {
-  .workspace { grid-template-columns: 1fr 340px; }
   .usage-cards { grid-template-columns: repeat(3, 1fr); }
   .content-grid { grid-template-columns: 1fr; }
   .indexed-data-summary { grid-template-columns: repeat(2, 1fr); }
@@ -641,7 +649,6 @@ select:focus-visible {
   .environment-toggle button { padding: 6px 7px; }
   .help-button { width: 34px; height: 34px; justify-content: center; padding: 0; font-size: 0; }
   .tour-dialog { right: 16px; bottom: 16px; }
-  .desktop-assistant { display: none; }
   .local-pill { padding: 6px 8px; font-size: 11px; }
   .mode-label-full { display: none; }
   .mode-label-short { display: inline; }
@@ -657,6 +664,7 @@ select:focus-visible {
   .search-bar { margin-top: 16px; }
   .workspace-tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .workspace-tabs button { min-height: 42px; padding: 8px; }
+  .workspace-chat .assistant-panel { height: calc(100vh - 190px); min-height: 520px; }
   .source-mode-bar { align-items: stretch; flex-direction: column; }
   .source-toggle { width: 100%; }
   .source-toggle button { flex: 1; }
@@ -670,7 +678,4 @@ select:focus-visible {
   .section-heading { align-items: flex-start; flex-direction: column; }
   .card { min-height: 340px; }
   .mira-fab { position: fixed; right: 16px; bottom: 16px; display: flex; align-items: center; gap: 7px; padding: 12px 15px; color: white; border: 0; border-radius: 999px; background: #087f7a; box-shadow: 0 12px 35px rgba(0,0,0,.25); font-weight: 800; }
-  .mobile-drawer { position: fixed; inset: 0; z-index: 30; grid-template-columns: 1fr min(92vw, 390px); }
-  .drawer-backdrop { border: 0; background: rgba(3, 18, 28, .55); }
-  .mobile-drawer .assistant-panel { position: relative; height: 100vh; }
 }
