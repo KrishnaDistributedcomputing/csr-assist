@@ -36,6 +36,7 @@ RUN python -m venv /opt/csr-assist/venv \
 
 COPY backend ./backend
 COPY sample-documents ./sample-documents
+COPY docs/BUSINESS-REQUIREMENTS.md ./sample-documents/BUSINESS-REQUIREMENTS.md
 COPY --from=frontend /src/backend/csr_assist/static ./backend/csr_assist/static
 COPY docker/supervisord.conf /etc/supervisor/conf.d/csr-assist.conf
 COPY docker/entrypoint.sh /usr/local/bin/csr-assist-entrypoint
