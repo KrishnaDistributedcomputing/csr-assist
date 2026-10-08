@@ -74,6 +74,8 @@ The public deployment sets `CSR_READ_ONLY_DEMO=true`. In this mode:
 * The interface identifies itself as a public read-only demo
 * Offline cited answers remain available without provisioning an Ollama model
 * Online mode uses Azure AI Search and a grounded Azure AI Foundry deployment
+* Local-model inference is capped at 180 seconds so the API can return a JSON
+  timeout before the Container Apps ingress closes the request
 * Runtime documents, indexes, configuration, and model directories use
   ephemeral container storage
 

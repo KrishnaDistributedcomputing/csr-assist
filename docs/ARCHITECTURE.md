@@ -413,7 +413,7 @@ instance. Ollama manifests and blobs are immutable image content under
 | `CSR_MODELS_DIR` | `/data/models` | Model storage directory created by the application and mounted for Ollama data |
 | `CSR_OLLAMA_URL` | `http://127.0.0.1:11434` | Local Ollama API endpoint |
 | `CSR_MAX_FILE_SIZE` | `52428800` | Maximum upload size in bytes |
-| `CSR_INFERENCE_TIMEOUT` | `300` | Local Ollama timeout in seconds, constrained to 5 through 600 |
+| `CSR_INFERENCE_TIMEOUT` | `300` | Local Ollama timeout in seconds, constrained to 5 through 600; the public Container Apps deployment sets 180 so FastAPI returns JSON before the ingress request limit |
 | `CSR_ALLOWED_EMBED_ORIGINS` | `http://localhost:8080` | Defined runtime setting; the current request middleware does not consume it, and browser connections remain restricted by same-origin CSP |
 | `CSR_READ_ONLY_DEMO` | `false` | Enables public-demo mutation and history restrictions |
 | `CSR_AZURE_AI_SEARCH_ENDPOINT` | Empty | Azure AI Search service endpoint; required for Online mode |
