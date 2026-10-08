@@ -76,6 +76,10 @@ class SentinelClient:
                 "lookback_hours": self.lookback_hours,
                 "summary": self._empty_summary(),
                 "telemetry": self._empty_telemetry(),
+                "telemetry_trend": [],
+                "top_signals": [],
+                "incident_metrics": self._incident_metrics([]),
+                "detection_metrics": self._detection_metrics([]),
                 "incidents": [],
                 "analytic_rules": [],
                 "errors": [],
@@ -86,6 +90,8 @@ class SentinelClient:
         incidents: list[dict[str, Any]] = []
         analytic_rules: list[dict[str, Any]] = []
         telemetry = self._empty_telemetry()
+        telemetry_trend: list[dict[str, Any]] = []
+        top_signals: list[dict[str, Any]] = []
 
         try:
             incidents = await self._incidents()
@@ -99,6 +105,14 @@ class SentinelClient:
             telemetry = await self._telemetry()
         except EXPECTED_AZURE_ERRORS as exc:
             errors.append(self._source_error("Log Analytics telemetry", exc))
+        try:
+            telemetry_trend = await self._telemetry_trend()
+        except EXPECTED_AZURE_ERRORS as exc:
+            errors.append(self._source_error("Log Analytics trend", exc))
+        try:
+            top_signals = await self._top_signals()
+        except EXPECTED_AZURE_ERRORS as exc:
+            errors.append(self._source_error("Log Analytics signals", exc))
 
         open_incidents = [
             incident
@@ -127,6 +141,10 @@ class SentinelClient:
             "lookback_hours": self.lookback_hours,
             "summary": summary,
             "telemetry": telemetry,
+            "telemetry_trend": telemetry_trend,
+            "top_signals": top_signals,
+            "incident_metrics": self._incident_metrics(incidents),
+            "detection_metrics": self._detection_metrics(analytic_rules),
             "incidents": incidents[:20],
             "analytic_rules": analytic_rules[:20],
             "errors": errors,
@@ -195,9 +213,9 @@ class SentinelClient:
             key=lambda rule: (not rule["enabled"], rule["name"].casefold()),
         )
 
-    async def _telemetry(self) -> dict[str, int]:
+    def _telemetry_source(self) -> str:
         safe_name = self.container_app_name.replace("'", "''")
-        query = (
+        return (
             "union isfuzzy=true ContainerAppConsoleLogs_CL, "
             "ContainerAppSystemLogs_CL\n"
             f"| where TimeGenerated >= ago({self.lookback_hours}h)\n"
@@ -205,14 +223,101 @@ class SentinelClient:
             f"'{safe_name}' or _ResourceId has '/containerApps/{safe_name}'\n"
             "| extend SecurityMessage = tostring(coalesce("
             "Log_s, Reason_s, Type))\n"
-            "| summarize Events=count(), "
+        )
+
+    async def _telemetry(self) -> dict[str, Any]:
+        query = (
+            self._telemetry_source()
+            + "| summarize Events=count(), "
             "Errors=countif(SecurityMessage has_any "
-            "('ERROR', 'exception', 'failed')), "
-            "Warnings=countif(SecurityMessage has 'WARNING'), "
+            "('ERROR', 'exception', 'failed') or Type_s =~ 'Error'), "
+            "Warnings=countif(SecurityMessage has 'WARNING' "
+            "or Type_s =~ 'Warning'), "
             "RateLimits=countif(SecurityMessage has 'event=rate_limit'), "
             "IdentityFailures=countif(SecurityMessage has "
-            "'event=identity_failure')"
+            "'event=identity_failure'), "
+            "ConsoleEvents=countif(Type == 'ContainerAppConsoleLogs_CL'), "
+            "SystemEvents=countif(Type == 'ContainerAppSystemLogs_CL'), "
+            "UniqueRevisions=dcountif(RevisionName_s, "
+            "isnotempty(RevisionName_s)), "
+            "UniqueReplicas=dcountif(ReplicaName_s, "
+            "isnotempty(ReplicaName_s)), "
+            "FailedScaleEvents=countif(Reason_s has 'Failed'), "
+            "LastEventAt=max(TimeGenerated)"
         )
+        tables = await self._logs_query(query)
+        if not tables or not tables[0].get("rows"):
+            return self._empty_telemetry()
+        values = self._table_rows(tables[0])[0]
+        events = max(int(values.get("events") or 0), 0)
+        errors = max(int(values.get("errors") or 0), 0)
+        return {
+            "events": events,
+            "errors": errors,
+            "warnings": max(int(values.get("warnings") or 0), 0),
+            "rate_limits": max(int(values.get("ratelimits") or 0), 0),
+            "identity_failures": max(
+                int(values.get("identityfailures") or 0), 0
+            ),
+            "console_events": max(
+                int(values.get("consoleevents") or 0), 0
+            ),
+            "system_events": max(int(values.get("systemevents") or 0), 0),
+            "unique_revisions": max(
+                int(values.get("uniquerevisions") or 0), 0
+            ),
+            "unique_replicas": max(
+                int(values.get("uniquereplicas") or 0), 0
+            ),
+            "failed_scale_events": max(
+                int(values.get("failedscaleevents") or 0), 0
+            ),
+            "error_rate_percent": round(
+                errors / events * 100 if events else 0.0, 2
+            ),
+            "last_event_at": str(values.get("lasteventat") or ""),
+        }
+
+    async def _telemetry_trend(self) -> list[dict[str, Any]]:
+        query = (
+            self._telemetry_source()
+            + "| summarize Events=count(), "
+            "Errors=countif(SecurityMessage has_any "
+            "('ERROR', 'exception', 'failed') or Type_s =~ 'Error') "
+            "by TimeBin=bin(TimeGenerated, 1h)\n"
+            "| sort by TimeBin asc"
+        )
+        tables = await self._logs_query(query)
+        if not tables:
+            return []
+        return [
+            {
+                "time": str(row.get("timebin") or ""),
+                "events": max(int(row.get("events") or 0), 0),
+                "errors": max(int(row.get("errors") or 0), 0),
+            }
+            for row in self._table_rows(tables[0])
+        ]
+
+    async def _top_signals(self) -> list[dict[str, Any]]:
+        query = (
+            self._telemetry_source()
+            + "| summarize Count=count() by "
+            "Signal=coalesce(Reason_s, Type_s, 'Other')\n"
+            "| top 6 by Count desc"
+        )
+        tables = await self._logs_query(query)
+        if not tables:
+            return []
+        return [
+            {
+                "signal": str(row.get("signal") or "Other"),
+                "count": max(int(row.get("count") or 0), 0),
+            }
+            for row in self._table_rows(tables[0])
+        ]
+
+    async def _logs_query(self, query: str) -> list[dict[str, Any]]:
         token = await self.token_provider(LOG_ANALYTICS_RESOURCE)
         url = (
             f"{LOG_ANALYTICS_ENDPOINT}/v1/workspaces/"
@@ -228,24 +333,59 @@ class SentinelClient:
                 json={"query": query},
             )
             response.raise_for_status()
-        tables = response.json().get("tables", [])
-        if not tables or not tables[0].get("rows"):
-            return self._empty_telemetry()
+        return list(response.json().get("tables", []))
+
+    @staticmethod
+    def _table_rows(table: dict[str, Any]) -> list[dict[str, Any]]:
         columns = [
             str(column["name"]).casefold()
-            for column in tables[0].get("columns", [])
+            for column in table.get("columns", [])
         ]
-        row = tables[0]["rows"][0]
-        values = {
-            name: max(int(row[index] or 0), 0)
-            for index, name in enumerate(columns)
-        }
+        return [
+            {
+                name: row[index]
+                for index, name in enumerate(columns)
+            }
+            for row in table.get("rows", [])
+        ]
+
+    @staticmethod
+    def _incident_metrics(
+        incidents: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        by_severity: dict[str, int] = {}
+        by_status: dict[str, int] = {}
+        for incident in incidents:
+            severity = str(incident["severity"]).casefold()
+            status = str(incident["status"]).casefold()
+            by_severity[severity] = by_severity.get(severity, 0) + 1
+            by_status[status] = by_status.get(status, 0) + 1
         return {
-            "events": values.get("events", 0),
-            "errors": values.get("errors", 0),
-            "warnings": values.get("warnings", 0),
-            "rate_limits": values.get("ratelimits", 0),
-            "identity_failures": values.get("identityfailures", 0),
+            "total": len(incidents),
+            "unassigned": sum(
+                str(incident["owner"]).casefold() == "unassigned"
+                for incident in incidents
+            ),
+            "by_severity": by_severity,
+            "by_status": by_status,
+        }
+
+    @staticmethod
+    def _detection_metrics(
+        rules: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        by_severity: dict[str, int] = {}
+        tactics: set[str] = set()
+        for rule in rules:
+            severity = str(rule["severity"]).casefold()
+            by_severity[severity] = by_severity.get(severity, 0) + 1
+            tactics.update(str(tactic) for tactic in rule["tactics"])
+        return {
+            "total": len(rules),
+            "enabled": sum(bool(rule["enabled"]) for rule in rules),
+            "disabled": sum(not bool(rule["enabled"]) for rule in rules),
+            "by_severity": by_severity,
+            "tactics": sorted(tactics),
         }
 
     async def _arm_get(self, resource_type: str) -> dict[str, Any]:
@@ -281,13 +421,20 @@ class SentinelClient:
         }
 
     @staticmethod
-    def _empty_telemetry() -> dict[str, int]:
+    def _empty_telemetry() -> dict[str, Any]:
         return {
             "events": 0,
             "errors": 0,
             "warnings": 0,
             "rate_limits": 0,
             "identity_failures": 0,
+            "console_events": 0,
+            "system_events": 0,
+            "unique_revisions": 0,
+            "unique_replicas": 0,
+            "failed_scale_events": 0,
+            "error_rate_percent": 0.0,
+            "last_event_at": "",
         }
 
     @staticmethod

@@ -296,6 +296,10 @@ Sentinel workspace:
 * Enabled scheduled analytic rules
 * Container Apps security event volume for the selected lookback window
 * Server error, warning, rate-limit, and managed-identity failure totals
+* Console and system event volume, ingestion freshness, and error rate
+* Observed revisions, replicas, and failed scale events
+* Hourly event and error trends with the most frequent platform signals
+* Incident and detection distributions by status, severity, and ownership
 * Recent incident severity, status, owner, and update time
 * Detection status, severity, frequency, and MITRE ATT&CK tactics
 

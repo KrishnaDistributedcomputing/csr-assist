@@ -1,6 +1,7 @@
 import {
   Activity,
   AlertTriangle,
+  BarChart3,
   BellRing,
   CheckCircle2,
   Clock3,
@@ -8,6 +9,8 @@ import {
   FileSearch,
   Fingerprint,
   RefreshCw,
+  Radio,
+  Server,
   ShieldAlert,
   ShieldCheck,
 } from "lucide-react";
@@ -101,6 +104,15 @@ export default function SecurityPanel() {
     ["Active detections", overview.summary.active_analytic_rules, Eye],
     [`Events · ${overview.lookback_hours}h`, overview.summary.telemetry_events, Activity],
   ] as const;
+  const recentTrend = overview.telemetry_trend.slice(-12);
+  const maximumTrendEvents = Math.max(
+    ...recentTrend.map((point) => point.events),
+    1
+  );
+  const maximumSignalCount = Math.max(
+    ...overview.top_signals.map((signal) => signal.count),
+    1
+  );
 
   return (
     <section
@@ -151,11 +163,108 @@ export default function SecurityPanel() {
         ))}
       </div>
 
+      <div className="security-metrics-grid">
+        <section className="security-card">
+          <div className="section-heading">
+            <div><p className="eyebrow">Ingestion</p><h3>Telemetry coverage</h3></div>
+            <Radio size={20} />
+          </div>
+          <dl className="security-metric-list">
+            <div><dt>Last event</dt><dd>{formatTimestamp(overview.telemetry.last_event_at)}</dd></div>
+            <div><dt>Console events</dt><dd>{overview.telemetry.console_events.toLocaleString()}</dd></div>
+            <div><dt>System events</dt><dd>{overview.telemetry.system_events.toLocaleString()}</dd></div>
+            <div><dt>Error rate</dt><dd>{overview.telemetry.error_rate_percent.toFixed(2)}%</dd></div>
+          </dl>
+        </section>
+        <section className="security-card">
+          <div className="section-heading">
+            <div><p className="eyebrow">Runtime</p><h3>Platform activity</h3></div>
+            <Server size={20} />
+          </div>
+          <dl className="security-metric-list">
+            <div><dt>Observed revisions</dt><dd>{overview.telemetry.unique_revisions}</dd></div>
+            <div><dt>Observed replicas</dt><dd>{overview.telemetry.unique_replicas}</dd></div>
+            <div><dt>Failed scale events</dt><dd>{overview.telemetry.failed_scale_events}</dd></div>
+            <div><dt>Lookback window</dt><dd>{overview.lookback_hours} hours</dd></div>
+          </dl>
+        </section>
+        <section className="security-card">
+          <div className="section-heading">
+            <div><p className="eyebrow">Incidents</p><h3>Queue distribution</h3></div>
+            <BellRing size={20} />
+          </div>
+          <dl className="security-metric-list">
+            <div><dt>Total returned</dt><dd>{overview.incident_metrics.total}</dd></div>
+            <div><dt>Unassigned</dt><dd>{overview.incident_metrics.unassigned}</dd></div>
+            {Object.entries(overview.incident_metrics.by_status).map(([status, count]) => (
+              <div key={status}><dt>{status}</dt><dd>{count}</dd></div>
+            ))}
+          </dl>
+        </section>
+        <section className="security-card">
+          <div className="section-heading">
+            <div><p className="eyebrow">Detections</p><h3>Coverage posture</h3></div>
+            <Eye size={20} />
+          </div>
+          <dl className="security-metric-list">
+            <div><dt>Total rules</dt><dd>{overview.detection_metrics.total}</dd></div>
+            <div><dt>Enabled</dt><dd>{overview.detection_metrics.enabled}</dd></div>
+            <div><dt>Disabled</dt><dd>{overview.detection_metrics.disabled}</dd></div>
+            <div><dt>ATT&amp;CK tactics</dt><dd>{overview.detection_metrics.tactics.length}</dd></div>
+          </dl>
+        </section>
+      </div>
+
       <div className="security-grid">
         <section className="security-card">
           <div className="section-heading">
             <div><p className="eyebrow">Live posture</p><h3>Telemetry signals</h3></div>
             <Activity size={20} />
+          </div>
+
+          <div className="security-grid">
+            <section className="security-card">
+              <div className="section-heading">
+                <div><p className="eyebrow">Hourly trend</p><h3>Events and errors</h3></div>
+                <BarChart3 size={20} />
+              </div>
+              <div className="security-trend" aria-label="Hourly security telemetry trend">
+                {recentTrend.map((point) => (
+                  <div className="security-trend-point" key={point.time}>
+                    <div className="security-trend-bars">
+                      <span
+                        className="events"
+                        style={{ height: `${Math.max(point.events / maximumTrendEvents * 100, 3)}%` }}
+                        title={`${point.events} events`}
+                      />
+                      <span
+                        className="errors"
+                        style={{ height: `${Math.max(point.errors / maximumTrendEvents * 100, point.errors ? 3 : 0)}%` }}
+                        title={`${point.errors} errors`}
+                      />
+                    </div>
+                    <small>{new Date(point.time).toLocaleTimeString([], { hour: "numeric" })}</small>
+                  </div>
+                ))}
+                {recentTrend.length === 0 && <span>No hourly telemetry returned.</span>}
+              </div>
+              <div className="security-legend"><span><i className="events" />Events</span><span><i className="errors" />Errors</span></div>
+            </section>
+            <section className="security-card">
+              <div className="section-heading">
+                <div><p className="eyebrow">Platform signals</p><h3>Most frequent event reasons</h3></div>
+                <Activity size={20} />
+              </div>
+              <div className="security-signal-list">
+                {overview.top_signals.map((signal) => (
+                  <div key={signal.signal}>
+                    <span><strong>{signal.signal}</strong><small>{signal.count.toLocaleString()}</small></span>
+                    <i><b style={{ width: `${signal.count / maximumSignalCount * 100}%` }} /></i>
+                  </div>
+                ))}
+                {overview.top_signals.length === 0 && <span>No platform signals returned.</span>}
+              </div>
+            </section>
           </div>
           <dl className="security-telemetry">
             <div><dt>Server errors</dt><dd>{overview.telemetry.errors}</dd></div>

@@ -71,9 +71,23 @@ The **Security** tab reports one of three states:
 * `Microsoft Sentinel is not configured here` means the deployment has no
   Sentinel workspace configuration. This is expected for local Docker.
 
-The tab displays the latest 20 incidents and analytic rules. The aggregate
-telemetry window defaults to 24 hours and can be configured from 1 to 168
-hours.
+The tab displays the latest 20 incidents and analytic rules. Its expanded
+metrics include:
+
+* Total, console, and system telemetry events
+* Error and warning totals with the calculated error rate
+* Rate-limit and managed-identity failure events
+* Latest ingestion timestamp and configured lookback
+* Distinct revisions and replicas observed in the logs
+* Failed scale events reported by the platform
+* Hourly event and error trends
+* The six most frequent Container Apps event reasons
+* Incident status, severity, ownership, and assignment distribution
+* Enabled and disabled detection counts, severity distribution, and
+  MITRE ATT&CK tactic coverage
+
+The aggregate telemetry window defaults to 24 hours and can be configured from
+1 to 168 hours.
 
 ## Deploy or refresh the integration
 

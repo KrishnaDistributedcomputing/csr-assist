@@ -165,6 +165,35 @@ export interface SecurityOverview {
     warnings: number;
     rate_limits: number;
     identity_failures: number;
+    console_events: number;
+    system_events: number;
+    unique_revisions: number;
+    unique_replicas: number;
+    failed_scale_events: number;
+    error_rate_percent: number;
+    last_event_at: string;
+  };
+  telemetry_trend: Array<{
+    time: string;
+    events: number;
+    errors: number;
+  }>;
+  top_signals: Array<{
+    signal: string;
+    count: number;
+  }>;
+  incident_metrics: {
+    total: number;
+    unassigned: number;
+    by_severity: Record<string, number>;
+    by_status: Record<string, number>;
+  };
+  detection_metrics: {
+    total: number;
+    enabled: number;
+    disabled: number;
+    by_severity: Record<string, number>;
+    tactics: string[];
   };
   incidents: Array<{
     id: string;

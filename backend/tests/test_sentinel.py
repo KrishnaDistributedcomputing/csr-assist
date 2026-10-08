@@ -42,6 +42,43 @@ async def test_overview_combines_incidents_rules_and_telemetry() -> None:
             payload = json.loads(request.content)
             assert "ContainerAppConsoleLogs_CL" in payload["query"]
             assert "ca-csr-assist-demo" in payload["query"]
+            if "by TimeBin" in payload["query"]:
+                return httpx.Response(
+                    200,
+                    json={
+                        "tables": [
+                            {
+                                "columns": [
+                                    {"name": "TimeBin"},
+                                    {"name": "Events"},
+                                    {"name": "Errors"},
+                                ],
+                                "rows": [
+                                    ["2026-10-07T11:00:00Z", 50, 1],
+                                    ["2026-10-07T12:00:00Z", 70, 2],
+                                ],
+                            }
+                        ]
+                    },
+                )
+            if "top 6" in payload["query"]:
+                return httpx.Response(
+                    200,
+                    json={
+                        "tables": [
+                            {
+                                "columns": [
+                                    {"name": "Signal"},
+                                    {"name": "Count"},
+                                ],
+                                "rows": [
+                                    ["RevisionUpdate", 80],
+                                    ["ContainerAppConsoleLogs_CL", 40],
+                                ],
+                            }
+                        ]
+                    },
+                )
             return httpx.Response(
                 200,
                 json={
@@ -53,8 +90,26 @@ async def test_overview_combines_incidents_rules_and_telemetry() -> None:
                                 {"name": "Warnings"},
                                 {"name": "RateLimits"},
                                 {"name": "IdentityFailures"},
+                                {"name": "ConsoleEvents"},
+                                {"name": "SystemEvents"},
+                                {"name": "UniqueRevisions"},
+                                {"name": "UniqueReplicas"},
+                                {"name": "FailedScaleEvents"},
+                                {"name": "LastEventAt"},
                             ],
-                            "rows": [[120, 3, 5, 2, 1]],
+                            "rows": [[
+                                120,
+                                3,
+                                5,
+                                2,
+                                1,
+                                40,
+                                80,
+                                2,
+                                3,
+                                4,
+                                "2026-10-07T12:05:00Z",
+                            ]],
                         }
                     ]
                 },
@@ -112,14 +167,25 @@ async def test_overview_combines_incidents_rules_and_telemetry() -> None:
         "telemetry_events": 120,
     }
     assert overview["telemetry"]["rate_limits"] == 2
+    assert overview["telemetry"]["error_rate_percent"] == 2.5
+    assert overview["telemetry"]["console_events"] == 40
+    assert overview["telemetry_trend"][1]["events"] == 70
+    assert overview["top_signals"][0] == {
+        "signal": "RevisionUpdate",
+        "count": 80,
+    }
+    assert overview["incident_metrics"]["by_severity"] == {"high": 1}
+    assert overview["detection_metrics"]["tactics"] == ["Impact"]
     assert overview["incidents"][0]["owner"] == "Security operations"
     assert overview["analytic_rules"][0]["tactics"] == ["Impact"]
     assert requested_resources == [
         "https://management.azure.com/",
         "https://management.azure.com/",
         "https://api.loganalytics.io/",
+        "https://api.loganalytics.io/",
+        "https://api.loganalytics.io/",
     ]
-    assert len(requests) == 3
+    assert len(requests) == 5
 
 
 @pytest.mark.asyncio

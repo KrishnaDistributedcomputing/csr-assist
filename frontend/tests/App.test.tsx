@@ -62,7 +62,34 @@ beforeEach(() => {
                 errors: 1,
                 warnings: 2,
                 rate_limits: 3,
-                identity_failures: 0
+                identity_failures: 0,
+                console_events: 70,
+                system_events: 50,
+                unique_revisions: 2,
+                unique_replicas: 3,
+                failed_scale_events: 1,
+                error_rate_percent: 0.83,
+                last_event_at: "2026-10-07T12:00:00Z"
+              },
+              telemetry_trend: [
+                { time: "2026-10-07T11:00:00Z", events: 50, errors: 0 },
+                { time: "2026-10-07T12:00:00Z", events: 70, errors: 1 }
+              ],
+              top_signals: [
+                { signal: "RevisionUpdate", count: 80 }
+              ],
+              incident_metrics: {
+                total: 0,
+                unassigned: 0,
+                by_severity: {},
+                by_status: {}
+              },
+              detection_metrics: {
+                total: 1,
+                enabled: 1,
+                disabled: 0,
+                by_severity: { high: 1 },
+                tactics: ["Impact"]
               },
               incidents: [],
               analytic_rules: [{
@@ -138,6 +165,9 @@ test("renders the document workspace and Mira", async () => {
   ).toBeInTheDocument();
   expect(screen.getByText("Security operations center")).toBeInTheDocument();
   expect(screen.getByText("CSR Assist server error spike")).toBeInTheDocument();
+  expect(screen.getByText("Telemetry coverage")).toBeInTheDocument();
+  expect(screen.getByText("Events and errors")).toBeInTheDocument();
+  expect(screen.getByText("RevisionUpdate")).toBeInTheDocument();
   fireEvent.click(screen.getByRole("tab", { name: /Compliance/ }));
   expect(
     await screen.findByLabelText(
