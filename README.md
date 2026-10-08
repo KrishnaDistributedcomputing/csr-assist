@@ -126,9 +126,9 @@ not support the question, the application returns the standard unsupported
 answer instead of using the fallback.
 
 The repository includes
-[`PUBLIC-cogsdale-overview.md`](sample-documents/PUBLIC-cogsdale-overview.md),
-a concise demo document derived from Cogsdale's public website with source
-links and a non-authoritative-content notice.
+[`SAMPLE-utility-services-overview.md`](sample-documents/SAMPLE-utility-services-overview.md),
+a synthetic utility-service document for demonstrating search, grounding, and
+citations without referring to a real vendor.
 
 ## Data boundaries and compliance controls
 

@@ -42,12 +42,12 @@ async def test_search_and_foundry_use_managed_identity(
                         {
                             "document_id": 7,
                             "chunk_id": 11,
-                            "name": "PUBLIC-cogsdale-overview.md",
-                            "relative_path": "PUBLIC-cogsdale-overview.md",
+                            "name": "SAMPLE-utility-services-overview.md",
+                            "relative_path": "SAMPLE-utility-services-overview.md",
                             "location": "section 2",
-                            "text": "Cogsdale CSM supports utility billing.",
+                            "text": "The service platform supports utility billing.",
                             "extraction": "native",
-                            "source_url": "https://cogsdale.com/",
+                            "source_url": "https://example.com/utility-services",
                         }
                     ]
                 },
@@ -56,7 +56,11 @@ async def test_search_and_foundry_use_managed_identity(
             200,
             json={
                 "choices": [
-                    {"message": {"content": "CSM supports utility billing. [1]"}}
+                    {
+                        "message": {
+                            "content": "The service platform supports utility billing. [1]"
+                        }
+                    }
                 ],
                 "usage": {"prompt_tokens": 12, "completion_tokens": 7},
             },
@@ -77,7 +81,7 @@ async def test_search_and_foundry_use_managed_identity(
         transport=httpx.MockTransport(respond),
     )
 
-    sources = await client.search("Cogsdale billing", 3, [7, 9, 7])
+    sources = await client.search("utility service billing", 3, [7, 9, 7])
     generation = await client.generate("Use only [1].")
     alternate_generation = await client.generate(
         "Use only [1].",
@@ -86,7 +90,7 @@ async def test_search_and_foundry_use_managed_identity(
     documents = await client.list_documents()
 
     assert sources[0]["channel"] == "online"
-    assert sources[0]["source_url"] == "https://cogsdale.com/"
+    assert sources[0]["source_url"] == "https://example.com/utility-services"
     assert generation.text.endswith("[1]")
     assert generation.prompt_tokens == 12
     assert alternate_generation.text.endswith("[1]")

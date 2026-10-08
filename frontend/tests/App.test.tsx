@@ -368,8 +368,8 @@ test("public demo can preview Docker and Azure environments", async () => {
       ? [
           {
             document_id: 7,
-            name: "PUBLIC-cogsdale-overview.md",
-            relative_path: "PUBLIC-cogsdale-overview.md"
+            name: "SAMPLE-utility-services-overview.md",
+            relative_path: "SAMPLE-utility-services-overview.md"
           },
           {
             document_id: 8,
@@ -583,8 +583,8 @@ test("switches document search to Azure AI online mode", async () => {
       ? [
           {
             document_id: 7,
-            name: "PUBLIC-cogsdale-overview.md",
-            relative_path: "PUBLIC-cogsdale-overview.md"
+            name: "SAMPLE-utility-services-overview.md",
+            relative_path: "SAMPLE-utility-services-overview.md"
           },
           {
             document_id: 8,
@@ -599,7 +599,7 @@ test("switches document search to Azure AI online mode", async () => {
           online_model: "phi-4-mini"
         }
       : url.includes("/search")
-        ? { query: "Cogsdale", source: "online", results: [] }
+        ? { query: "utility services", source: "online", results: [] }
         : url.includes("/scan/status")
           ? {
               state: "idle",
@@ -643,16 +643,19 @@ test("switches document search to Azure AI online mode", async () => {
     sourcesPanel.getByRole("checkbox", { name: /SAMPLE-support-policy\.md/ })
   );
   fireEvent.change(screen.getByLabelText("Search documents"), {
-    target: { value: "Cogsdale" }
+    target: { value: "utility services" }
   });
   fireEvent.click(screen.getByRole("button", { name: "Search" }));
 
   await screen.findByText("Approved online sources");
   expect(
-    currentFetch.mock.calls.some(([input]) =>
-      String(input).includes("/search?q=Cogsdale&source=online")
-      && String(input).includes("document_ids=7")
-    )
+    currentFetch.mock.calls.some(([input]) => {
+      const url = new URL(String(input), "http://localhost");
+      return url.pathname.endsWith("/search")
+        && url.searchParams.get("q") === "utility services"
+        && url.searchParams.get("source") === "online"
+        && url.searchParams.get("document_ids") === "7";
+    })
   ).toBe(true);
 });
 
@@ -695,7 +698,7 @@ test("shows Azure-specific progress while Online chat is pending", async () => {
   await waitFor(() => expect(onlineButton).not.toBeDisabled());
   fireEvent.click(onlineButton);
   fireEvent.change(screen.getByLabelText("Message Mira"), {
-    target: { value: "What is Cogsdale?" }
+    target: { value: "What services does the platform provide?" }
   });
   fireEvent.click(screen.getByRole("button", { name: "Send" }));
 

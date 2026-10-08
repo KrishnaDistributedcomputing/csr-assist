@@ -145,14 +145,14 @@ def test_online_mode_requires_azure_configuration(client: TestClient) -> None:
     assert (
         client.get(
             "/api/search",
-            params={"q": "Cogsdale", "source": "online"},
+            params={"q": "utility services", "source": "online"},
         ).status_code
         == 503
     )
     assert (
         client.post(
             "/api/chat",
-            json={"message": "What is Cogsdale?", "source": "online"},
+            json={"message": "What services does the platform provide?", "source": "online"},
         ).status_code
         == 503
     )
@@ -181,12 +181,12 @@ def test_online_search_and_foundry_answer(
     source = {
         "document_id": 7,
         "chunk_id": 11,
-        "name": "PUBLIC-cogsdale-overview.md",
-        "relative_path": "PUBLIC-cogsdale-overview.md",
+        "name": "SAMPLE-utility-services-overview.md",
+        "relative_path": "SAMPLE-utility-services-overview.md",
         "location": "section 2",
-        "text": "Cogsdale CSM supports utility billing services.",
+        "text": "The service platform supports utility billing services.",
         "extraction": "native",
-        "source_url": "https://cogsdale.com/",
+        "source_url": "https://example.com/utility-services",
         "retrieval": "azure-ai-search",
         "channel": "online",
     }
@@ -205,9 +205,9 @@ def test_online_search_and_foundry_answer(
         return [
             {
                 "document_id": 7,
-                "name": "PUBLIC-cogsdale-overview.md",
-                "relative_path": "PUBLIC-cogsdale-overview.md",
-                "source_url": "https://cogsdale.com/",
+                "name": "SAMPLE-utility-services-overview.md",
+                "relative_path": "SAMPLE-utility-services-overview.md",
+                "source_url": "https://example.com/utility-services",
             }
         ]
 
@@ -216,7 +216,7 @@ def test_online_search_and_foundry_answer(
     async def online_generate(_: str, model: str) -> GenerationResult:
         selected_models.append(model)
         return GenerationResult(
-            text="Cogsdale CSM supports utility billing services. [1]",
+            text="The service platform supports utility billing services. [1]",
             prompt_tokens=30,
             output_tokens=10,
         )
@@ -229,7 +229,7 @@ def test_online_search_and_foundry_answer(
         search = online_client.get(
             "/api/search",
             params={
-                "q": "Cogsdale utility billing",
+                "q": "utility service billing",
                 "source": "online",
                 "document_ids": 7,
             },
@@ -238,7 +238,7 @@ def test_online_search_and_foundry_answer(
         answer = online_client.post(
             "/api/chat",
             json={
-                "message": "What utility billing services does Cogsdale support?",
+                "message": "What utility billing services does the platform support?",
                 "source": "online",
                 "model": "gpt-4o-mini",
                 "document_ids": [7],
@@ -262,10 +262,10 @@ def test_online_search_and_foundry_answer(
     assert answer["model"] == "azure-foundry:gpt-4o-mini"
     assert selected_models == ["gpt-4o-mini"]
     assert selected_searches == [
-        ("Cogsdale utility billing", 8, [7]),
-        ("What utility billing services does Cogsdale support?", 2, [7]),
+        ("utility service billing", 8, [7]),
+        ("What utility billing services does the platform support?", 2, [7]),
     ]
-    assert answer["citations"][0]["name"] == "PUBLIC-cogsdale-overview.md"
+    assert answer["citations"][0]["name"] == "SAMPLE-utility-services-overview.md"
 
 
 def test_online_chat_uses_extractive_fallback_when_foundry_is_limited(
@@ -283,12 +283,12 @@ def test_online_chat_uses_extractive_fallback_when_foundry_is_limited(
     source = {
         "document_id": 7,
         "chunk_id": 11,
-        "name": "PUBLIC-cogsdale-overview.md",
-        "relative_path": "PUBLIC-cogsdale-overview.md",
+        "name": "SAMPLE-utility-services-overview.md",
+        "relative_path": "SAMPLE-utility-services-overview.md",
         "location": "section 2",
-        "text": "Cogsdale CSM supports utility billing services.",
+        "text": "The service platform supports utility billing services.",
         "extraction": "native",
-        "source_url": "https://cogsdale.com/",
+        "source_url": "https://example.com/utility-services",
         "retrieval": "azure-ai-search",
         "channel": "online",
     }
@@ -308,12 +308,12 @@ def test_online_chat_uses_extractive_fallback_when_foundry_is_limited(
     with TestClient(app) as online_client:
         answer = online_client.post(
             "/api/chat",
-            json={"message": "Tell me about Cogsdale", "source": "online"},
+            json={"message": "Tell me about the service platform", "source": "online"},
         ).json()
 
     assert answer["state"] == "answered"
     assert answer["model"] == "azure-ai-search:extractive-fallback"
-    assert answer["citations"][0]["name"] == "PUBLIC-cogsdale-overview.md"
+    assert answer["citations"][0]["name"] == "SAMPLE-utility-services-overview.md"
     assert "Azure AI Foundry is temporarily unavailable" in answer["notice"]
 
 
@@ -332,12 +332,12 @@ def test_online_chat_uses_extractive_fallback_for_grounded_model_refusal(
     source = {
         "document_id": 7,
         "chunk_id": 11,
-        "name": "PUBLIC-cogsdale-overview.md",
-        "relative_path": "PUBLIC-cogsdale-overview.md",
+        "name": "SAMPLE-utility-services-overview.md",
+        "relative_path": "SAMPLE-utility-services-overview.md",
         "location": "section 2",
-        "text": "Cogsdale CSM supports utility billing services.",
+        "text": "The service platform supports utility billing services.",
         "extraction": "native",
-        "source_url": "https://cogsdale.com/",
+        "source_url": "https://example.com/utility-services",
         "retrieval": "azure-ai-search",
         "channel": "online",
     }
@@ -358,14 +358,14 @@ def test_online_chat_uses_extractive_fallback_for_grounded_model_refusal(
         answer = online_client.post(
             "/api/chat",
             json={
-                "message": "What utility billing services does Cogsdale support?",
+                "message": "What utility billing services does the platform support?",
                 "source": "online",
             },
         ).json()
         unrelated = online_client.post(
             "/api/chat",
             json={
-                "message": "What repair services are available?",
+                "message": "What is the lunar orbital period?",
                 "source": "online",
             },
         ).json()
