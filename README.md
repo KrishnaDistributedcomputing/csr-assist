@@ -2,7 +2,7 @@
 title: CSR Assist
 description: Source-isolated local and Azure document search with grounded customer-service answers
 author: CSR Assist team
-ms.date: 2026-10-06
+ms.date: 2026-10-08
 ms.topic: overview
 ---
 
@@ -26,6 +26,12 @@ unrelated, out of scope, or unsupported receive this response:
 Detailed guides:
 
 * [Architecture](docs/ARCHITECTURE.md)
+* [Business requirements](docs/BUSINESS-REQUIREMENTS.md)
+* [Business flow and diagrams](docs/BUSINESS-FLOW.md)
+* [Data architecture](docs/DATA-ARCHITECTURE.md)
+* [Security architecture](docs/SECURITY-ARCHITECTURE.md)
+* [Microsoft Sentinel operations](docs/SECURITY-OPERATIONS.md)
+* [Day 2 go-live plan](docs/GO-LIVE-PLAN.md)
 * [User guide](docs/USER-GUIDE.md)
 
 Project links:
