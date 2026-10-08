@@ -7,6 +7,7 @@ RUN npm ci && npm run build
 FROM acrcsrassistkvenk26.azurecr.io/csr-assist@sha256:c10b6bad7e80a5d774ac2b41af1d0a7ed9136d6209b2e3e93a4987df0642c93f
 
 USER root
+RUN rm -rf /opt/csr-assist/sample-documents
 COPY backend/csr_assist /opt/csr-assist/backend/csr_assist
 COPY sample-documents /opt/csr-assist/sample-documents
 COPY docs/BUSINESS-REQUIREMENTS.md /opt/csr-assist/sample-documents/BUSINESS-REQUIREMENTS.md

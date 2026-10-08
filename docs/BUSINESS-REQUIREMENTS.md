@@ -118,6 +118,12 @@ These requirements apply in both operating modes.
 
 ## Offline mode requirements
 
+Offline mode requirements cover local document discovery and indexing, fast
+extractive retrieval, optional allowlisted Ollama generation, loopback-only
+model traffic, explicit inference failures, corpus revision tracking,
+persistent customer-controlled storage, confined file access, no cloud
+fallback, and tested local recovery.
+
 ### Offline business goals
 
 Offline mode supports teams that require local processing, predictable data
@@ -176,6 +182,13 @@ Offline mode is ready for an approved cohort when:
    not reach Azure AI services.
 
 ## Online mode requirements
+
+Online mode requirements cover retrieval from a separately approved Azure AI
+Search index, server-side selected-document filters, bounded document scope,
+allowlisted Foundry generation, minimized model context, citation-reference
+validation, cited fallback, visible dependency degradation, cost signals, no
+Offline fallback, managed identity, privacy-safe monitoring, and immutable
+application rollback.
 
 ### Online business goals
 
