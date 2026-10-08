@@ -26,6 +26,17 @@ All seven sections remain available on small screens. The
 header displays the active Online or Offline mode, and the **Ask Mira** button
 opens the mobile assistant.
 
+On desktop, Mira remains visible in a vertical panel on the right while you
+move between Sources, Analytics, Architecture, Go-Live, Security, and
+Compliance on the left. This layout keeps the current answer, citations,
+grounding scope, model selection, and composer available without replacing the
+active workspace view.
+
+Generated answers use larger text, increased line spacing, a bounded reading
+width, clearer citation cards, and more space around response actions. On
+smaller screens, select **Open Chat** to use Mira as a focused full-height
+view, then select **Close Chat** to return to the workspace.
+
 ### Follow the guided demo
 
 Select **How to use** in the top-right header, next to the environment selector

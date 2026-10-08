@@ -283,7 +283,7 @@ const tourSteps = [
       "Docker offers installed Ollama models or fast retrieval without an LLM.",
       "Azure shows allowlisted Foundry deployments and estimated token cost."
     ],
-    workspaceTab: "chat"
+    workspaceTab: "sources"
   },
   {
     target: "prompts",
@@ -294,7 +294,7 @@ const tourSteps = [
       "Draft responses, compare instructions, summarize, or identify gaps.",
       "Prompt selection never submits automatically."
     ],
-    workspaceTab: "chat"
+    workspaceTab: "sources"
   },
   {
     target: "composer",
@@ -305,7 +305,7 @@ const tourSteps = [
       "Live stages distinguish retrieval, generation, and citation work.",
       "Errors remain explicit and can be dismissed before retrying."
     ],
-    workspaceTab: "chat"
+    workspaceTab: "sources"
   },
   {
     target: "assistant",
@@ -316,7 +316,7 @@ const tourSteps = [
       "Source cards open the exact excerpts used by Mira.",
       "History is private in production and disabled in the public demo."
     ],
-    workspaceTab: "chat"
+    workspaceTab: "sources"
   }
 ] as const;
 const AnalyticsPanel = lazy(() => import("./AnalyticsPanel"));
@@ -326,7 +326,6 @@ const GoLivePanel = lazy(() => import("./GoLivePanel"));
 const SecurityPanel = lazy(() => import("./SecurityPanel"));
 type WorkspaceTab = "chat" | "sources" | "analytics" | "architecture" | "go-live" | "security" | "compliance";
 const workspaceTabs: WorkspaceTab[] = [
-  "chat",
   "sources",
   "analytics",
   "architecture",
@@ -373,7 +372,7 @@ export default function App() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [assistantTab, setAssistantTab] = useState<"chat" | "history">("chat");
   const [promptView, setPromptView] = useState<"suggested" | "all">("suggested");
-  const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>("chat");
+  const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>("sources");
   const [usage, setUsage] = useState<UsageDashboard | null>(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [usageLoaded, setUsageLoaded] = useState(false);
@@ -874,6 +873,15 @@ export default function App() {
             onClick={() =>
               window.parent.postMessage("csr-assist-close", window.location.origin)
             }
+          >
+            <X />
+          </button>
+        )}
+        {!widget && (
+          <button
+            className="icon-button assistant-close mobile-only"
+            aria-label="Close Chat"
+            onClick={() => setWorkspaceTab("sources")}
           >
             <X />
           </button>
@@ -1404,7 +1412,7 @@ export default function App() {
         </div>
       </header>
       {error && <div className="error-banner" role="alert">{error}</div>}
-      <div className="workspace">
+      <div className={`workspace ${workspaceTab === "chat" ? "show-chat" : ""}`}>
         <section
           className={`documents-pane ${workspaceTab === "chat" ? "chat-workspace" : ""}`}
           id="workspace-content"
@@ -1478,12 +1486,12 @@ export default function App() {
             data-tour="workspace"
           >
             <button
+              className="assistant-workspace-tab mobile-only"
               id="workspace-tab-chat"
               role="tab"
               aria-selected={workspaceTab === "chat"}
               aria-controls="workspace-panel-chat"
               tabIndex={workspaceTab === "chat" ? 0 : -1}
-              className={workspaceTab === "chat" ? "active" : ""}
               onClick={() => setWorkspaceTab("chat")}
               onKeyDown={handleWorkspaceTabKeyDown}
             >
@@ -1562,17 +1570,6 @@ export default function App() {
               <Check size={15} /> Compliance
             </button>
           </div>
-          {workspaceTab === "chat" && (
-            <div
-              id="workspace-panel-chat"
-              className="workspace-chat"
-              role="tabpanel"
-              aria-labelledby="workspace-tab-chat"
-              data-tour="assistant"
-            >
-              {assistant}
-            </div>
-          )}
           <div
             id="workspace-panel-sources"
             role="tabpanel"
@@ -1817,6 +1814,14 @@ export default function App() {
             </div>
           )}
         </section>
+        <aside
+          id="workspace-panel-chat"
+          className="assistant-rail"
+          aria-label="Persistent Mira chat"
+          data-tour="assistant"
+        >
+          {assistant}
+        </aside>
       </div>
       {workspaceTab !== "chat" && (
         <button

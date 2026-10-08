@@ -122,6 +122,11 @@ test("renders the document workspace and Mira", async () => {
   render(<App />);
   expect(screen.getByRole("heading", { name: /find answers/i })).toBeInTheDocument();
   expect(screen.getByLabelText("Mira assistant")).toBeInTheDocument();
+  expect(screen.getByLabelText("Persistent Mira chat")).toBeInTheDocument();
+  expect(screen.getByRole("tab", { name: "Sources" })).toHaveAttribute(
+    "aria-selected",
+    "true"
+  );
   expect(await screen.findByText("No documents indexed")).toBeInTheDocument();
   expect(
     screen.getByRole("heading", { name: "What can I help you find?" })
