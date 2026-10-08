@@ -101,6 +101,40 @@ def test_chunk_text_is_bounded() -> None:
     assert all(len(chunk) <= 1000 for chunk in chunks)
 
 
+def test_markdown_chunks_preserve_heading_boundaries(tmp_path: Path) -> None:
+    root = tmp_path / "documents"
+    root.mkdir()
+    database = Database(tmp_path / "index.db")
+    database.initialize()
+    service = DocumentService(database, root, 1024 * 1024)
+    path = root / "requirements.md"
+    path.write_text(
+        "---\ntitle: Requirements\n---\n\n"
+        "## Offline mode requirements\n\nOffline summary.\n\n"
+        "### Offline functional requirements\n\n"
+        + ("offline-control " * 250)
+        + "\n\n## Online mode requirements\n\nOnline summary.\n\n"
+        "### Online functional requirements\n\n"
+        + ("online-control " * 250),
+        encoding="utf-8",
+    )
+
+    chunks = service.extract(path)
+    offline_chunks = [
+        chunk for chunk in chunks if chunk["location"].startswith("Offline")
+    ]
+    online_chunks = [
+        chunk for chunk in chunks if chunk["location"].startswith("Online")
+    ]
+
+    assert offline_chunks
+    assert online_chunks
+    assert all("online-control" not in chunk["text"] for chunk in offline_chunks)
+    assert all("offline-control" not in chunk["text"] for chunk in online_chunks)
+    assert all(chunk["location"] in chunk["text"] for chunk in chunks)
+    assert all("title: Requirements" not in chunk["text"] for chunk in chunks)
+
+
 def test_query_terms_remove_question_stop_words() -> None:
     assert query_terms("What do returns require?") == ["returns", "require"]
 

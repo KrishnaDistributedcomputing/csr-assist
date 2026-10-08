@@ -122,8 +122,11 @@ class DocumentService:
         safe = validate_document_file(self.root, path, self.max_size)
         suffix = safe.suffix.lower()
         sections: list[tuple[str, str, str]]
-        if suffix in {".txt", ".md", ".markdown"}:
+        is_markdown = suffix in {".md", ".markdown"}
+        if suffix == ".txt":
             sections = [("Section 1", safe.read_text(encoding="utf-8"), "native")]
+        elif is_markdown:
+            sections = markdown_sections(safe.read_text(encoding="utf-8"))
         elif suffix == ".csv":
             sections = [("Rows", self._extract_csv(safe), "native")]
         elif suffix == ".json":
@@ -147,6 +150,8 @@ class DocumentService:
         chunks: list[dict[str, str]] = []
         for location, text, extraction in sections:
             for chunk in chunk_text(text):
+                if is_markdown and location.casefold() not in chunk.casefold():
+                    chunk = f"{location}\n\n{chunk}"
                 chunks.append(
                     {"location": location, "text": chunk, "extraction": extraction}
                 )
@@ -306,3 +311,42 @@ def chunk_text(text: str, maximum: int = 1400, overlap: int = 180) -> list[str]:
     if current and (not chunks or current != chunks[-1]):
         chunks.append(current)
     return chunks
+
+
+def markdown_sections(text: str) -> list[tuple[str, str, str]]:
+    """Split Markdown at primary headings while retaining parent context."""
+    lines = text.splitlines()
+    if lines and lines[0].strip() == "---":
+        for index, line in enumerate(lines[1:], 1):
+            if line.strip() == "---":
+                lines = lines[index + 1 :]
+                break
+
+    sections: list[tuple[str, str, str]] = []
+    current: list[str] = []
+    parent = ""
+    location = "Overview"
+
+    def flush() -> None:
+        nonlocal current
+        if any(line.strip() and not line.lstrip().startswith("#") for line in current):
+            sections.append((location, "\n".join(current).strip(), "native"))
+        current = []
+
+    for line in lines:
+        match = re.match(r"^(#{1,3})\s+(.+?)\s*$", line)
+        if not match:
+            current.append(line)
+            continue
+        level = len(match.group(1))
+        title = match.group(2).strip().rstrip("#").strip()
+        flush()
+        if level <= 2:
+            parent = title
+            location = title
+            current = [f"## {title}"]
+        else:
+            location = f"{parent} > {title}" if parent else title
+            current = [f"## {parent}", f"### {title}"] if parent else [f"### {title}"]
+    flush()
+    return sections
